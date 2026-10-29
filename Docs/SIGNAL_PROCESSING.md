@@ -29,7 +29,7 @@ CoP_ML = ((FR + RR) - (FL + RL)) / total * (Dx / 2)
 CoP_AP = ((FL + FR) - (RL + RR)) / total * (Dy / 2)
 ```
 
-Use documented sensor coordinates when physical units matter. Normalized coordinates are acceptable for initial control development if clearly documented.
+Use documented or physically measured sensor-centre coordinates when physical units matter. Do not assume that the board's outer dimensions equal sensor spacing. Normalized coordinates are acceptable for initial control development until the supplied board can be measured and verified.
 
 ## Direction validation
 
@@ -94,15 +94,17 @@ alpha = 1 - exp(-2 * pi * cutoffHz * deltaTime)
 y = y + alpha * (x - y)
 ```
 
-Advantages: inexpensive and responsive.
+Advantages: inexpensive, responsive, and naturally supports timestamp-derived `deltaTime`.
 
-Risks: fixed alpha is misleading when sample intervals vary; prefer timestamp-aware `deltaTime`.
+Risks: fixed alpha is misleading when sample intervals vary; prefer timestamp-aware `deltaTime`. Do not describe `1 / (2*pi*cutoffHz)` as a fixed input-to-output delay: it is the analogue time constant, while phase/group delay depends on signal frequency and sampling.
 
 ### Second-order Butterworth low-pass
 
-Use a causal digital IIR implementation with coefficients derived for the measured sample rate. Record cutoff frequency, sample rate, coefficient design method, and reset behaviour.
+Use a causal digital IIR implementation with coefficients derived for the measured nominal sample rate. First measure the board rate and jitter from source timestamps. If jitter is material, resample to a uniform timeline or use the timestamp-aware EMA; do not silently redesign Butterworth coefficients for every packet interval. Record cutoff frequency, nominal sample rate, coefficient design method, and reset behaviour.
 
 Do not use forward-backward zero-phase filtering for live control. It may be used only as an offline reference and must be labelled accordingly.
+
+Treat theoretical filter phase/group delay, transport/processing latency, and observed gameplay response delay as separate quantities. Measure and report them separately rather than assigning one fixed delay value to a filter.
 
 ### Median spike prefilter
 

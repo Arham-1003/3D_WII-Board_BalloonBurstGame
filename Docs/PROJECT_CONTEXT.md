@@ -44,7 +44,7 @@ The environment may look infinite, but the gameplay volume remains controlled. D
 3. Neutral stance recording.
 4. Comfortable left, right, forward, and backward calibration.
 5. Random practice round not used in filter comparison.
-6. Ninety-second measured filter trials with rest between trials.
+6. Four 90-second measured rounds per participant, with rest between rounds, providing six minutes of measured gameplay data.
 7. Results and optional random showcase round.
 
 Difficulty progression:
@@ -76,9 +76,11 @@ A seed is hidden and is never disclosed to the player. It exists to reproduce a 
 ## Constraints
 
 - The team is short on time, so the vertical slice and data path take priority over decorative features.
+- The assessed environment should be simple, comfortable, and high-contrast. Elaborate scenery and timed scenery transformations are deferred until the full data path is reliable.
 - A physical board is eventually required for final validation and real data collection.
 - A headset may not always be available; XR and input simulation must remain functional.
 - Natural postural sway is not automatically noise and must be interpreted carefully.
+- The confirmed requirement is at least five measured minutes per participant, satisfied by four 90-second measured rounds for six minutes total.
 
 ## Sources
 

@@ -30,6 +30,8 @@ The detailed human-readable plan is [Devlopment Plan.pdf](Devlopment%20Plan.pdf)
 8. Do not change filter settings, mapping, spawn rules, or scoring during a measured trial.
 9. Record the active filter, parameters, sequence ID, hidden seed, calibration values, input source, and build identifier.
 10. Treat VR comfort and participant stability as release-blocking requirements.
+11. A dedicated external bridge must read the physical board and transmit versioned four-load packets to Unity; the recorder application alone is not the live transport.
+12. The confirmed protocol requirement is at least five measured minutes per participant. Four 90-second measured rounds provide six minutes total.
 
 ## Required architecture
 
@@ -58,6 +60,8 @@ Required processing abstractions:
 
 Do not place socket code, filter state, calibration logic, scoring, and movement inside one MonoBehaviour.
 
+The physical path is `Wii Balance Board -> external bridge -> UDP -> UdpCopInputSource`. The bridge and Unity must share sequence numbers and source timestamps. The bridge preserves every acquired raw packet; gameplay may consume the newest valid state without silently becoming the authoritative raw recorder.
+
 ## Unity working rules
 
 - Use the Unity editor and package versions recorded in [Unity setup](Docs/UNITY_SETUP.md). Do not update packages casually.
@@ -85,7 +89,7 @@ Hardware-dependent work must remain explicitly marked unverified until tested wi
 
 ## Scope discipline
 
-Prioritize the tested vertical slice, data integrity, calibration, filters, and experimental fairness. Defer multiplayer, online accounts, embedded OpenAI APIs, lean-controlled camera rotation, complex procedural worlds, and decorative systems that threaten the schedule.
+Prioritize the tested vertical slice, data integrity, calibration, filters, and experimental fairness. Keep the four-scene structure, a small balloon/effect pool, matched hidden sequences, and core CoP/filter tests. Use a simple high-contrast environment for the assessed build; defer elaborate scenery, timed scenery changes, multiplayer, online accounts, embedded OpenAI APIs, lean-controlled camera rotation, and complex procedural worlds.
 
 ## New-session procedure
 

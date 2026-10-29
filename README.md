@@ -7,6 +7,7 @@ Balloon Balance VR is an SSRP Unity project for real-time Center of Pressure sig
 - A calibration lobby ends at a glowing **Start Balloon Challenge** door.
 - A moderate forward lean confirms the start after calibration.
 - Each scored round lasts 90 seconds.
+- Each participant completes four measured rounds, providing six minutes of measured gameplay data in total.
 - The VR camera remains stationary except for natural headset tracking.
 - CoP ML controls horizontal pointer movement.
 - CoP AP controls vertical pointer movement.
@@ -66,11 +67,12 @@ Do not place the documentation inside `Assets/`; Unity does not need to import i
 - C# gameplay and processing code
 - Python or compatible acquisition bridge for the Wii Balance Board
 - UDP communication between acquisition and Unity
+- A dedicated external board bridge that logs every acquired raw packet before sending versioned four-load UDP packets
 - GitHub private repository with Git LFS
 
 ## Status
 
-Planning is approved. The PDF and portable context package are complete. Unity project creation and implementation have not started. Hardware integration remains unverified until a physical Wii Balance Board is available.
+Planning is approved and includes the dedicated live bridge and four-round participant protocol. The Unity `6000.6.6f1` VR-template project, OpenXR/XR Simulation baseline, Git LFS rules, and repository context are present. The board library, sensor orientation, physical sensor spacing, sampling rate, Bluetooth behaviour, and physical headset runtime remain deferred until hardware details are available. Project-specific gameplay implementation is beginning with the board-independent vertical slice.
 
 Continue from the first unfinished item in [Tasks](Docs/TASKS.md).
 

@@ -5,7 +5,8 @@
 The architecture must allow the complete Unity game and processing pipeline to be developed without a physical Wii Balance Board. Replacing simulated input with live input must not require gameplay changes.
 
 ```text
-Wii board / keyboard / simulator / CSV
+Wii board -> external bridge -> UDP
+keyboard / simulator / CSV ------+
                   |
                   v
            ICopInputSource
@@ -179,6 +180,17 @@ Score and metrics summary, saved-file confirmation, retry, and exit.
 
 ## UDP bridge
 
+The Wii Balance Board Recorder is a recording/calibration tool, not the assumed live Unity transport. A dedicated external bridge is a required component. Its responsibilities are deliberately narrow:
+
+1. connect to the board through the selected and hardware-verified library or acquisition method;
+2. read calibrated four-corner loads and a monotonic source timestamp;
+3. assign a strictly increasing sequence number;
+4. append every acquired raw packet to a bridge-side CSV before transmission;
+5. transmit the versioned packet to `127.0.0.1:5005` at the measured board rate;
+6. expose connection, calibration, and fault status without performing gameplay filtering.
+
+The acquisition library is intentionally undecided until the supplied board is tested. A Windows C# bridge is the preferred first investigation, but no library is considered approved merely because it compiles.
+
 Preferred live packet:
 
 ```json
@@ -195,11 +207,11 @@ Preferred live packet:
 }
 ```
 
-Receive on a background task/thread, store the latest immutable result, and publish it on the Unity main thread. Never call Unity object APIs from the receive thread. Dispose the socket on quit and assembly reload.
+Receive on a background task/thread and enqueue immutable packets. Never call Unity object APIs from the receive thread. On the main thread, process/log all queued packets in sequence while exposing the newest valid processed state to pointer rendering. Detect sequence gaps, duplicates, reordering, malformed values, stale data, and clock discontinuities. Dispose the socket on quit and assembly reload.
 
 ## Logging
 
-Use separate sample, event, and metadata files. Create unique names from participant code, condition, repetition, and timestamp. Write to an in-progress name and finalize only after a clean close. Report the saved path and row counts to the operator.
+Use separate sample, event, and metadata files. The bridge raw CSV is the authoritative record of every acquired packet. Unity's sample log records every packet it receives plus derived CoP/filter/mapping values; its event log records gameplay events. Merge them using sequence number and source timestamp, never frame index alone. Create unique names from participant code, condition, repetition, and timestamp. Write to an in-progress name and finalize only after a clean close. Report saved paths, row counts, missing-sequence counts, and rejected-packet counts to the operator.
 
 ## Performance rules
 

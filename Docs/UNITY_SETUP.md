@@ -2,7 +2,7 @@
 
 ## Version policy
 
-Use one LTS Unity Editor version across all team computers. Prefer Unity 6 LTS if it is supported by the available headset, lab machines, and packages. If the laboratory standard is Unity 2022.3 LTS, use that consistently instead.
+Use Unity `6000.6.6f1` across all development computers. Do not change the editor or locked package versions without recording and validating the change.
 
 Record the exact editor version and package-lock changes in this file once the project is created. Do not update the editor or packages during formal data collection unless a critical defect requires it.
 
@@ -44,17 +44,18 @@ Confirm compatible versions of:
 
 Import XR Interaction Toolkit Starter Assets and the XR simulator sample when needed by the installed package version.
 
-After project creation, record versions here:
+Verified project baseline on 2026-10-24:
 
 ```text
-Unity Editor: TBD
-Input System: TBD
-XR Plug-in Management: TBD
-OpenXR Plugin: TBD
-XR Interaction Toolkit: TBD
-TextMeshPro: TBD
-Test Framework: TBD
-Target headset/runtime: TBD
+Unity Editor: 6000.6.6f1
+Input System: 1.20.0
+XR Plug-in Management: 4.7.0
+OpenXR Plugin: 1.18.0
+XR Interaction Toolkit: 3.6.1
+TextMeshPro: supplied by the Unity 6 project/UI stack; project essentials are imported
+Test Framework: 1.8.0 (transitive dependency)
+Development runtime: OpenXR with XR Simulation fallback
+Physical headset/runtime: deferred until hardware details are available
 ```
 
 ## Project Settings
@@ -183,6 +184,6 @@ At the start of a new chat, use [the handoff prompt](NEW_CHAT_HANDOFF.md).
 - Required `.meta` files are present.
 - Generated folders are not staged.
 - The relevant Play mode path works.
-- Shared scene ownership has been respected.
+- Scene and prefab edits are focused and reviewable.
 - [Tasks](TASKS.md) reflects the result.
 

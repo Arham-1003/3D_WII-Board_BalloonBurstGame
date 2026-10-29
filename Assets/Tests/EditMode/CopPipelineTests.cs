@@ -1,0 +1,53 @@
+using BalloonBalance.Calibration;
+using BalloonBalance.Core;
+using BalloonBalance.SignalProcessing;
+using NUnit.Framework;
+using UnityEngine;
+
+namespace BalloonBalance.Tests.EditMode
+{
+    public sealed class CopPipelineTests
+    {
+        [Test]
+        public void CalculatorProducesExpectedSignsAndRejectsLowLoad()
+        {
+            Assert.That(CopCalculator.TryCalculate(10f, 30f, 10f, 30f, 5f,
+                out float total, out Vector2 right, out CopValidityFlags flags), Is.True);
+            Assert.That(total, Is.EqualTo(80f));
+            Assert.That(right.x, Is.Positive);
+            Assert.That(right.y, Is.EqualTo(0f).Within(0.0001f));
+            Assert.That(flags, Is.EqualTo(CopValidityFlags.Valid));
+
+            Assert.That(CopCalculator.TryCalculate(0.1f, 0.1f, 0.1f, 0.1f, 5f,
+                out _, out _, out flags), Is.False);
+            Assert.That(flags, Is.EqualTo(CopValidityFlags.LowTotalLoad));
+        }
+
+        [Test]
+        public void AsymmetricMappingRemapsDeadZoneAndClamps()
+        {
+            CalibrationProfile profile = new CalibrationProfile
+            {
+                neutral = new Vector2(0.1f, -0.05f), leftRange = 0.2f, rightRange = 0.4f,
+                forwardRange = 0.3f, backwardRange = 0.25f, deadZoneX = 0.1f, deadZoneY = 0.1f
+            };
+            Assert.That(CopMapper.Map(profile.neutral, profile), Is.EqualTo(Vector2.zero));
+            Assert.That(CopMapper.Map(new Vector2(0.5f, 0.25f), profile), Is.EqualTo(Vector2.one));
+            Assert.That(CopMapper.Map(new Vector2(-1f, -1f), profile), Is.EqualTo(-Vector2.one));
+        }
+
+        [Test]
+        public void CausalFiltersConvergeWithoutOvershoot()
+        {
+            ICopFilter[] filters = { new EmaCopFilter(2f), new MovingAverageCopFilter(5), new ButterworthCopFilter(2f, 50f) };
+            foreach (ICopFilter filter in filters)
+            {
+                filter.Reset();
+                Vector2 output = Vector2.zero;
+                for (int index = 0; index < 200; index++) output = filter.Process(Vector2.one, 0.02f);
+                Assert.That(output.x, Is.EqualTo(1f).Within(0.02f), filter.Name);
+                Assert.That(output.y, Is.EqualTo(1f).Within(0.02f), filter.Name);
+            }
+        }
+    }
+}

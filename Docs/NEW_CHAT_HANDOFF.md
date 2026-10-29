@@ -5,7 +5,7 @@
 Copy and paste this after opening the future Unity repository root in VS Code:
 
 ```text
-This is the Balloon Balance VR SSRP project. Before changing anything, read AGENTS.md and the relevant files under Docs, especially PROJECT_CONTEXT.md, ARCHITECTURE.md, DECISIONS.md, UNITY_SETUP.md, SIGNAL_PROCESSING.md, and TASKS.md. Inspect the repository and Unity project state, then identify the first unfinished task and propose the smallest verifiable next step. Preserve keyboard, synthetic four-load, CSV playback, and UDP input paths. Do not add CoP-controlled camera movement. Clearly mark anything that cannot be verified without the Wii Balance Board or VR headset.
+This is the Balloon Balance VR SSRP project. Before changing anything, read AGENTS.md and the relevant files under Docs, especially PROJECT_CONTEXT.md, ARCHITECTURE.md, DECISIONS.md, UNITY_SETUP.md, SIGNAL_PROCESSING.md, and TASKS.md. Inspect the repository and Unity project state, then identify the first unfinished task and propose the smallest verifiable next step. Preserve keyboard, synthetic four-load, CSV playback, and UDP input paths. Preserve the dedicated external board bridge boundary, bridge-side raw logging, four-scene flow, pooling, matched hidden sequences, and core signal-processing tests. Do not add CoP-controlled camera movement. Clearly mark anything that cannot be verified without the Wii Balance Board or VR headset.
 ```
 
 ## First implementation prompt
@@ -41,6 +41,7 @@ If known, add:
 - current milestone;
 - Unity Console errors copied as text;
 - whether the board and headset are physically available;
+- whether the bridge is running with the synthetic sender or physical board;
 - screenshots only when visual state matters;
 - exact reproduction steps for a bug.
 

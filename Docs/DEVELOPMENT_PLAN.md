@@ -23,7 +23,7 @@ Every later milestone must preserve this working path.
 - Select one Unity LTS version for all computers.
 - Identify headset model/runtime and availability.
 - Identify Wii Balance Board access date and Bluetooth computer.
-- Agree on GitHub, Git LFS, team roles, and scene ownership.
+- Agree on GitHub and Git LFS. Formal team-role and scene-ownership assignments are not required for the current workflow.
 - Read [Project context](PROJECT_CONTEXT.md), [Architecture](ARCHITECTURE.md), and [Decisions](DECISIONS.md).
 
 Exit gate: dependencies and responsibilities are known.
@@ -109,19 +109,22 @@ Exit gate: a recorded input can be replayed through each condition and compared.
 4. Publish the latest valid sample on Unity's main thread.
 5. Detect stale, malformed, duplicate, and out-of-order packets.
 6. Add visible connection status and safe timeout behaviour.
+7. Queue and process every received packet for sample logging while using the newest valid state for rendering.
+8. Detect and count sequence gaps, duplicates, reordering, malformed packets, and stale packets.
 
 Exit gate: the external synthetic sender controls the same pointer path.
 
 ## Milestone 8: physical board
 
 1. Install fresh batteries and test on a hard, level surface.
-2. Pair or connect through compatible acquisition software.
+2. Pair or connect through compatible acquisition software and select a board-reading library only after a hardware test.
 3. Verify each corner sensor independently.
 4. Record zero-load offsets and units.
 5. Verify right/left and forward/backward signs.
 6. Measure actual rate from timestamps.
-7. Connect raw calibrated loads to the UDP bridge.
-8. Test power-off and participant-step-off handling.
+7. Build the dedicated external bridge: read four calibrated loads, assign source timestamp and sequence number, log every raw packet, and transmit the versioned UDP schema.
+8. Connect raw calibrated loads to the UDP bridge.
+9. Test power-off and participant-step-off handling.
 
 Exit gate: live body lean reliably controls the pointer and produces complete logs.
 
@@ -129,9 +132,9 @@ Exit gate: live body lean reliably controls the pointer and produces complete lo
 
 - Validate stationary camera and standing height.
 - Keep targets within comfortable field and calibrated control limits.
-- Add attractive scenery with high target contrast.
+- Use a simple, attractive, static environment with high target contrast and clear depth cues.
 - Add audio and restrained burst effects.
-- Add environment/lighting transitions at 30 and 60 seconds.
+- Defer environment/lighting transitions until all measured-session requirements are reliable.
 - Conduct short comfort pilots with a spotter.
 
 Exit gate: a headset pilot completes the round comfortably and safely.
@@ -141,7 +144,7 @@ Exit gate: a headset pilot completes the round comfortably and safely.
 - Finalize filter parameters from non-formal pilot data.
 - Create several matched hidden sequences.
 - Counterbalance filter and sequence order.
-- Run a complete session including practice, rest, and conditions.
+- Run a complete session including practice, four 90-second measured rounds per participant, rest, and conditions.
 - Verify every sample, event, and metadata field.
 - Produce preliminary plots.
 
@@ -149,7 +152,7 @@ Exit gate: the pilot yields a complete analyzable dataset without manual repair.
 
 ## Milestone 11: formal acquisition and analysis
 
-- Acquire the duration required by the instructor.
+- Acquire four 90-second measured rounds per participant, yielding six minutes total and satisfying the confirmed minimum of five measured minutes per participant.
 - Preserve raw data before analysis.
 - Calculate neutral jitter, CoP path length, latency, settling, hit rate, response time, misses, and path efficiency.
 - Produce load, raw/filtered CoP, trajectory, spectrum/PSD, and performance plots.
@@ -172,15 +175,15 @@ Exit gate: the project can be presented even if live hardware fails on presentat
 
 ### Must
 
-Stationary XR, calibration, pointer, forward spawning, 90-second round, hit/miss, simulator, CoP, filters, UDP, logging, and safety timeout.
+Stationary XR, four-scene flow, calibration, pointer, forward spawning, 90-second round, four measured rounds per participant, hit/miss, simulator, CoP, filters, dedicated live bridge, UDP, raw-preserving logging, safety timeout, core CoP/filter tests, pooling, and matched sequences.
 
 ### Should
 
-Pooling, matched sequences, diagnostic plots, results screen, scenery transitions, audio, and automated tests.
+Diagnostic plots, results screen, simple static scenery, restrained audio, and broader gameplay tests.
 
 ### Optional
 
-Slow constant-forward showcase mode, multiple elaborate environments, and advanced adaptive difficulty.
+Scenery transitions, slow constant-forward showcase mode, multiple elaborate environments, and advanced adaptive difficulty.
 
 ### Excluded
 

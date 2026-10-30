@@ -82,6 +82,8 @@ Progress note (2026-10-26): added the board-independent processing foundation: f
 
 Progress note (2026-10-26): added the version 1 UDP receiver and external .NET synthetic sender. The sender logs raw packets before transmission and builds with 0 errors; Unity receives on a background thread, parses on the main thread, drains every queued packet, exposes the newest valid sample, and counts missing, duplicate, reordered, malformed, and stale traffic. End-to-end live UDP control and sample logging remain to be integrated and tested.
 
+Progress note (2026-10-30): confirmed laptop-only assessed scope (VR deferred) and documented recommended live filtering defaults (raw baseline, timestamp-aware EMA primary, optional short median prefilter, Butterworth comparison after measured rate/jitter validation). `CopInputManager` now exposes frame-by-frame raw and filtered CoP outputs so logging/diagnostics and gameplay conditions can consume both streams from the same input pipeline.
+
 ## Complete round
 
 - [x] Implement 3D forward spawn volume.
@@ -221,4 +223,3 @@ Acceptance: results, limitations, member contributions, and a reliable demonstra
 ## Current next action
 
 Integrate the implemented synthetic/CSV/UDP sources into an operator-facing input selector and add high-rate sample/metadata logging. Then build the guided CalibrationLobby flow around the implemented calibration profile and mapping functions. Physical headset and Wii Balance Board validation remains deferred until hardware details are available.
-

@@ -22,6 +22,8 @@ namespace BalloonBalance.Input
 
         public bool HasValidSample { get; private set; }
         public CopSample LatestSample { get; private set; }
+        public Vector2 RawCopPosition { get; private set; }
+        public Vector2 FilteredCopPosition { get; private set; }
         public Vector2 ControlPosition { get; private set; }
 
         private void Awake()
@@ -41,6 +43,8 @@ namespace BalloonBalance.Input
         private void Update()
         {
             HasValidSample = false;
+            RawCopPosition = Vector2.zero;
+            FilteredCopPosition = Vector2.zero;
             ControlPosition = Vector2.zero;
             if (!inputSource.IsConnected ||
                 !inputSource.TryGetLatestSample(out CopSample sample) ||
@@ -51,9 +55,11 @@ namespace BalloonBalance.Input
 
             LatestSample = sample;
             HasValidSample = true;
+            RawCopPosition = sample.RawCop;
             if (sample.SourceType == CopSourceType.Keyboard)
             {
-                ControlPosition = Vector2.ClampMagnitude(sample.FilteredCop, 1f);
+                FilteredCopPosition = sample.FilteredCop;
+                ControlPosition = Vector2.ClampMagnitude(FilteredCopPosition, 1f);
                 return;
             }
 
@@ -61,8 +67,8 @@ namespace BalloonBalance.Input
                 ? Mathf.Max(0f, (float)(sample.SourceTimestampSeconds - previousSourceTime))
                 : 1f / nominalSampleRateHz;
             previousSourceTime = sample.SourceTimestampSeconds;
-            Vector2 filtered = filter.Process(sample.RawCop, deltaTime);
-            ControlPosition = CopMapper.Map(filtered, calibration);
+            FilteredCopPosition = filter.Process(sample.RawCop, deltaTime);
+            ControlPosition = CopMapper.Map(FilteredCopPosition, calibration);
         }
 
         public void ResetProcessing()

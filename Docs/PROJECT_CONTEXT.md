@@ -18,7 +18,7 @@ The original planning sources are the course project DOCX, the sensor-systems gu
 
 ## Game concept
 
-Working title: **Balloon Balance VR**.
+Working title: **Balloon Balance** (laptop-assessed build, VR deferred).
 
 The participant starts in a calibration lobby. After neutral and directional calibration, a glowing door shows **Start Balloon Challenge**. A moderate forward lean held for approximately one second confirms the start. The scene fades into a visually rich environment such as a magical garden, floating-island landscape, or moonlit forest.
 
@@ -26,8 +26,8 @@ The challenge lasts 90 seconds. The participant remains stationary on the Wii Ba
 
 - left/right lean controls horizontal position;
 - forward/backward lean controls vertical position;
-- natural head movement is tracked by the headset;
-- CoP never rotates or translates the VR camera in the assessed mode.
+- in the current assessed build, the game is displayed directly on laptop in Unity;
+- CoP never rotates or translates the gameplay camera.
 
 Balloons spawn inside a bounded three-dimensional volume ahead of the player, move toward an interaction plane, and burst when they collide with the pointer. A missed balloon is one that crosses the interaction plane or miss boundary without a valid hit.
 
@@ -64,7 +64,7 @@ A seed is hidden and is never disclosed to the player. It exists to reproduce a 
 
 ## Primary success criteria
 
-- The game works in desktop, XR simulator, and headset modes.
+- The game works in desktop mode for assessment; XR/headset support is optional and deferred.
 - Keyboard, synthetic four-load, CSV playback, and live UDP inputs share one downstream pipeline.
 - The participant can calibrate without developer intervention.
 - Every balloon is ahead and inside safe documented bounds.
@@ -90,4 +90,3 @@ A seed is hidden and is never disclosed to the player. It exists to reproduce a 
 - Suggested recorder: <https://github.com/tomvredeveld/wii-balance-board-recorder>
 - Unity Essentials: <https://learn.unity.com/pathway/unity-essentials>
 - XR Interaction Toolkit: <https://docs.unity3d.com/Packages/com.unity.xr.interaction.toolkit@3.1/manual/index.html>
-

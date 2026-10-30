@@ -288,6 +288,18 @@ This file records approved architectural and experimental decisions. Add a dated
 
 **Consequences:** Synthetic, CSV, and UDP development can proceed now. Physical units, final Butterworth sample rate, live bridge library, and hardware signs remain unverified.
 
+## D029: Laptop-only assessed build (VR deferred)
+
+**Date:** 2026-10-30
+
+**Status:** Accepted
+
+**Decision:** Continue the assessed build as a laptop-displayed Unity game without requiring an HMD. Keep the same CoP gameplay mapping and forward-only spawning rules, and keep the existing input/filter/logging architecture unchanged.
+
+**Reason:** The project team confirmed that the near-term deliverable is a laptop-playable game while still collecting live Wii-board raw data and real-time filtered control data.
+
+**Consequences:** VR-specific comfort and headset-runtime validation are deferred. Desktop view and input behavior become the primary execution path for testing and data collection readiness. D008 is superseded for the assessed build scope while D009-D012 and D028 remain in force.
+
 ## Decision template
 
 ```markdown
@@ -305,4 +317,3 @@ This file records approved architectural and experimental decisions. Add a dated
 
 **Supersedes/Superseded by:**
 ```
-

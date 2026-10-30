@@ -69,6 +69,21 @@ Document and test any change to this order.
 
 ## Filters
 
+### Recommended defaults for this laptop build
+
+For the current non-headset laptop gameplay mode, use:
+
+1. **Primary live control:** timestamp-aware **EMA** (`cutoffHz` about 2-3 Hz to start).
+2. **Optional spike hardening:** short odd-window **median prefilter** only when isolated spikes are present.
+3. **Comparison condition:** **raw/pass-through** as the no-filter baseline.
+4. **Secondary comparison condition:** **second-order Butterworth** only after the nominal sample rate and jitter are measured and documented.
+
+Why this default:
+
+- EMA is causal, low-cost, and robust to variable packet intervals when using source-timestamp `deltaTime`.
+- Median prefilter removes single-packet spikes without forcing heavy smoothing.
+- Butterworth is valid and useful, but only when fixed-rate assumptions are explicit and justified.
+
 ### Raw/pass-through
 
 Purpose: baseline with the lowest algorithmic delay.
@@ -187,8 +202,11 @@ The simulator may add:
 - independent sensor noise;
 - slow drift;
 - isolated spikes;
+- quantization/step-like sensor resolution effects;
+- cross-sensor mismatch or gain imbalance;
 - packet loss;
 - timing jitter;
+- stale packets or bursty packet arrival from the transport path;
 - configurable sample rate;
 - unoccupied/step-off states.
 
@@ -219,3 +237,20 @@ Use monotonic clocks. Do not subtract timestamps from different unsynchronized c
 
 Natural postural sway is not automatically noise. Interpret frequency and task context before labelling variation as artifact.
 
+## Real-time dual-path integration in Unity
+
+For the current laptop gameplay mode, keep one shared runtime pipeline and expose both real-time streams:
+
+```text
+Wii board -> external bridge -> UDP -> UdpCopInputSource
+                                   -> raw CoP stream (for logging/diagnostics and raw-condition gameplay)
+                                   -> causal filter -> filtered CoP stream (for processed-condition gameplay)
+```
+
+Implementation rules:
+
+1. Keep `ICopInputSource` as the only gameplay input boundary.
+2. Keep both `RawCopPosition` and `FilteredCopPosition` available every frame.
+3. Drive gameplay pointer mapping from the selected condition (raw baseline or filtered condition) without changing the rest of gameplay code.
+4. Record both streams with sequence number and source timestamp so raw-versus-filtered comparisons are trial-aligned.
+5. Freeze filter type and parameters for each measured round.

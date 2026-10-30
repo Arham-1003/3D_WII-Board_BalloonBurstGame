@@ -1,6 +1,6 @@
-# Balloon Balance VR
+# Balloon Balance
 
-Balloon Balance VR is an SSRP Unity project for real-time Center of Pressure signal processing using a Wii Balance Board. A participant leans on the board to move a pointer through a forward-facing VR balloon challenge.
+Balloon Balance is an SSRP Unity project for real-time Center of Pressure signal processing using a Wii Balance Board. A participant leans on the board to move a pointer through a forward-facing balloon challenge displayed on laptop in Unity.
 
 ## Approved game
 
@@ -8,7 +8,7 @@ Balloon Balance VR is an SSRP Unity project for real-time Center of Pressure sig
 - A moderate forward lean confirms the start after calibration.
 - Each scored round lasts 90 seconds.
 - Each participant completes four measured rounds, providing six minutes of measured gameplay data in total.
-- The VR camera remains stationary except for natural headset tracking.
+- The gameplay camera remains stationary in the assessed laptop build.
 - CoP ML controls horizontal pointer movement.
 - CoP AP controls vertical pointer movement.
 - Balloons spawn only ahead, at controlled width, height, and depth.
@@ -75,4 +75,3 @@ Do not place the documentation inside `Assets/`; Unity does not need to import i
 Planning is approved and includes the dedicated live bridge and four-round participant protocol. The Unity `6000.6.6f1` VR-template project, OpenXR/XR Simulation baseline, Git LFS rules, and repository context are present. The board library, sensor orientation, physical sensor spacing, sampling rate, Bluetooth behaviour, and physical headset runtime remain deferred until hardware details are available. Project-specific gameplay implementation is beginning with the board-independent vertical slice.
 
 Continue from the first unfinished item in [Tasks](Docs/TASKS.md).
-

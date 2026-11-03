@@ -37,9 +37,20 @@ namespace BalloonBalance.Tests.EditMode
         }
 
         [Test]
+        public void DefaultCalibrationReachesBoundsWithComfortableLean()
+        {
+            CalibrationProfile profile = new CalibrationProfile { deadZoneX = 0f, deadZoneY = 0f };
+            Assert.That(CopMapper.Map(new Vector2(-0.1f, 0f), profile).x, Is.EqualTo(-1f));
+            Assert.That(CopMapper.Map(new Vector2(0.1f, 0f), profile).x, Is.EqualTo(1f));
+            Assert.That(CopMapper.Map(new Vector2(0f, -0.1f), profile).y, Is.EqualTo(-1f));
+            Assert.That(CopMapper.Map(new Vector2(0f, 0.1f), profile).y, Is.EqualTo(1f));
+        }
+
+        [Test]
         public void CausalFiltersConvergeWithoutOvershoot()
         {
-            ICopFilter[] filters = { new EmaCopFilter(2f), new MovingAverageCopFilter(5), new ButterworthCopFilter(2f, 50f) };
+            ICopFilter[] filters = { new EmaCopFilter(2f), new MovingAverageCopFilter(5),
+                new ButterworthCopFilter(2f, 50f), new MedianCopFilter(3) };
             foreach (ICopFilter filter in filters)
             {
                 filter.Reset();
@@ -48,6 +59,17 @@ namespace BalloonBalance.Tests.EditMode
                 Assert.That(output.x, Is.EqualTo(1f).Within(0.02f), filter.Name);
                 Assert.That(output.y, Is.EqualTo(1f).Within(0.02f), filter.Name);
             }
+        }
+
+
+        [Test]
+        public void MedianFilterRejectsAnIsolatedSpike()
+        {
+            MedianCopFilter filter = new MedianCopFilter(3);
+            filter.Process(Vector2.zero, 0.02f);
+            filter.Process(Vector2.zero, 0.02f);
+            Vector2 output = filter.Process(new Vector2(10f, -10f), 0.02f);
+            Assert.That(output, Is.EqualTo(Vector2.zero));
         }
     }
 }

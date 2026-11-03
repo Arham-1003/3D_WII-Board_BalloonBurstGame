@@ -82,13 +82,15 @@ Progress note (2026-10-26): added the board-independent processing foundation: f
 
 Progress note (2026-10-26): added the version 1 UDP receiver and external .NET synthetic sender. The sender logs raw packets before transmission and builds with 0 errors; Unity receives on a background thread, parses on the main thread, drains every queued packet, exposes the newest valid sample, and counts missing, duplicate, reordered, malformed, and stale traffic. End-to-end live UDP control and sample logging remain to be integrated and tested.
 
+Progress note (2026-11-01): added a Python 3 file-tail bridge for the official Wii Balance Board Recorder's documented 12-column output. It preserves every observed row in a raw audit CSV before sending versioned four-load UDP packets to Unity, rejects malformed/non-finite/timestamp-regressing input, and refuses to guess the supplied legacy 10-column sensor ordering. Parser and transport unit tests pass. Physical sensor orientation, Recorder flush latency, acquisition rate/jitter, disconnect behavior, and end-to-end live board control remain unverified.
+
 ## Complete round
 
 - [x] Implement 3D forward spawn volume.
 - [x] Enforce bounds and minimum spacing.
 - [x] Enforce consecutive target-distance limits.
 - [x] Implement random hidden seed mode.
-- [ ] Implement matched sequence mode.
+- [x] Implement matched sequence mode.
 - [x] Add balloon movement toward the interaction plane.
 - [x] Add miss boundary.
 - [x] Add 90-second timer.
@@ -115,8 +117,8 @@ Acceptance: the production CoP calculator converts simulated four-corner loads i
 ## Calibration and mapping
 
 - [ ] Detect board occupancy.
-- [ ] Record neutral stance and stability.
-- [ ] Record comfortable directional ranges.
+- [x] Record neutral stance and stability.
+- [x] Record comfortable directional ranges.
 - [ ] Validate calibration quality.
 - [x] Implement asymmetric normalization.
 - [x] Implement dead zone with continuous remapping.
@@ -126,18 +128,22 @@ Acceptance: the production CoP calculator converts simulated four-corner loads i
 
 Acceptance: two different users can safely reach the game bounds without changing code.
 
+Progress note (2026-11-01): added a guided five-point participant calibration to the paused Y settings menu. The operator captures centre, comfortable left/right, and comfortable forward/backward positions from valid raw CoP samples. These asymmetric limits immediately drive the common mapping pipeline while the selected causal filter remains the gameplay condition. Conservative 0.10 normalized fallback limits replace the previous overly wide defaults. Calibration quality and persistence still require physical-board validation before measured trials.
+
 ## Filters
 
 - [x] Define `ICopFilter`.
 - [x] Implement raw/pass-through filter.
 - [x] Implement moving average or EMA.
 - [x] Implement second-order Butterworth low-pass.
-- [ ] Optionally implement median spike prefilter.
+- [x] Implement median spike filter as the fifth selectable live condition.
 - [x] Reset filters between calibration and trials.
 - [ ] Record all parameters.
 - [x] Add filter step-response tests.
 
 Acceptance: identical CSV input can be replayed through every condition with traceable parameter metadata.
+
+Progress note (2026-11-01): added a fifth causal three-sample median condition while preserving raw corner loads and raw CoP alongside the single selected control-filter output. The Y settings window now selects Fixed Matched Sequences or Random Sequence before a round. Fixed mode cycles four hidden reproducible seeds in a stable order across participants. Board-friendly pacing increases spawn intervals, lowers approach speeds, and limits consecutive target jumps. C# runtime and PlayMode assemblies compile with zero errors; physical-board responsiveness and the new settings layout still require in-Editor/hardware validation.
 
 ## UDP and board bridge
 
@@ -146,16 +152,16 @@ Acceptance: identical CSV input can be replayed through every condition with tra
 - [x] Create bridge-side raw CSV logging before UDP transmission.
 - [x] Implement background UDP receive.
 - [x] Publish samples safely on Unity main thread.
-- [ ] Process/log all queued packets while rendering from the newest valid processed state (queue processing implemented; sample logging pending).
+- [x] Process/log all queued packets while rendering from the newest valid processed state.
 - [x] Detect stale, malformed, duplicate, and out-of-order packets.
-- [ ] Add connection-state UI.
-- [ ] Add timeout-safe pointer behaviour.
+- [ ] Add connection-state UI (implemented in the Y settings window; final Play Mode rerun blocked by the local Unity licensing/package-service crash).
+- [x] Add timeout-safe pointer behaviour.
 - [ ] Select/test board acquisition software.
 - [ ] Verify all four physical sensors.
 - [ ] Verify ML/AP signs.
 - [ ] Measure actual sample rate.
 - [ ] Measure source-timestamp jitter and decide whether nominal-rate Butterworth is acceptable.
-- [ ] Build the dedicated external board bridge.
+- [x] Build the dedicated external board bridge.
 - [ ] Connect real board loads to UDP bridge.
 - [ ] Test power-off and step-off states.
 
@@ -164,10 +170,10 @@ Acceptance: the dedicated bridge logs and streams live four-load packets; Unity 
 ## Logging
 
 - [ ] Define metadata file/schema.
-- [ ] Define sample CSV schema.
+- [x] Define sample CSV schema.
 - [ ] Define event CSV schema.
-- [ ] Implement unique trial filenames.
-- [ ] Use in-progress and clean-close file handling.
+- [x] Implement unique trial filenames.
+- [x] Use in-progress and clean-close file handling.
 - [ ] Display saved path and counts.
 - [ ] Record build or commit identifier.
 - [ ] Validate source, receive, event, and response timestamps.
@@ -220,5 +226,9 @@ Acceptance: results, limitations, member contributions, and a reliable demonstra
 
 ## Current next action
 
-Integrate the implemented synthetic/CSV/UDP sources into an operator-facing input selector and add high-rate sample/metadata logging. Then build the guided CalibrationLobby flow around the implemented calibration profile and mapping functions. Physical headset and Wii Balance Board validation remains deferred until hardware details are available.
+Resolve the local Unity licensing/package-service crash and rerun the new input-selector/sample-log Play Mode regression. Then connect a physical board through WiiBalanceWalker, Recorder, and the Python bridge to verify corner order, ML/AP signs, rate, jitter, stale handling, and live pointer control. After that, build the guided CalibrationLobby flow around the implemented calibration profile and mapping functions. Physical headset validation remains optional and deferred.
+
+Progress note (2026-11-01): integrated Keyboard, Synthetic Board, CSV Playback, and Live Wii Board (UDP) behind the common input manager and added an operator selector plus live connection state to the large Y settings window. Every accepted UDP sequence is processed once. Practice rounds create a separate raw-preserving sample CSV with source/receive timestamps, corner loads, selected filter output, control output, validity, and connection state. The runtime compiles with zero errors and all five Python bridge tests pass. An earlier Unity run passed four of five Play Mode tests and exposed a synthetic-source lifecycle fault, which was fixed; the final Unity rerun is blocked because Unity's external licensing client and package-manager service crash during editor startup. No physical-board claim is made.
+
+Progress note (2026-11-01): added a participant filter selector to the paused Y settings window. Raw, Moving Average, EMA, Butterworth, and Median are mutually exclusive live control conditions; switching resets filter history, and only the selected condition drives movement. Raw corner loads and raw CoP are always recorded, inactive filtered columns are written as `NaN`, and the active condition is recorded explicitly.
 

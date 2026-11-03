@@ -10,13 +10,14 @@ using UnityEngine;
 
 namespace BalloonBalance.Input
 {
-    public sealed class UdpCopInputSource : MonoBehaviour, ICopInputSource
+    public sealed class UdpCopInputSource : MonoBehaviour, IBufferedCopInputSource
     {
         [SerializeField, Range(1024, 65535)] private int port = 5005;
         [SerializeField, Min(0.05f)] private float staleAfterSeconds = 0.25f;
         [SerializeField, Min(0f)] private float minimumTotalLoad = 10f;
 
         private readonly ConcurrentQueue<string> packets = new ConcurrentQueue<string>();
+        private readonly ConcurrentQueue<CopSample> samples = new ConcurrentQueue<CopSample>();
         private UdpClient client;
         private Thread receiveThread;
         private volatile bool running;
@@ -33,6 +34,9 @@ namespace BalloonBalance.Input
 
         private void OnEnable()
         {
+            lastSequence = -1;
+            lastReceiveTime = 0d;
+            hasSample = false;
             try
             {
                 client = new UdpClient(new IPEndPoint(IPAddress.Loopback, port));
@@ -58,6 +62,8 @@ namespace BalloonBalance.Input
             return IsConnected && latest.IsValid;
         }
 
+        public bool TryDequeueSample(out CopSample sample) => samples.TryDequeue(out sample);
+
         private void ProcessPacket(string json)
         {
             BoardPacket packet;
@@ -79,6 +85,7 @@ namespace BalloonBalance.Input
             lastSequence = packet.sequence;
             lastReceiveTime = receiveTime;
             hasSample = true;
+            samples.Enqueue(latest);
         }
 
         private void ReceiveLoop()
@@ -103,6 +110,11 @@ namespace BalloonBalance.Input
             if (receiveThread != null && receiveThread.IsAlive) receiveThread.Join(100);
             client = null;
             receiveThread = null;
+            while (packets.TryDequeue(out _)) { }
+            while (samples.TryDequeue(out _)) { }
+            hasSample = false;
+            lastSequence = -1;
+            lastReceiveTime = 0d;
         }
 
         [Serializable]

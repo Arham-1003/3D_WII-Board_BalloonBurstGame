@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
@@ -12,6 +13,7 @@ namespace BalloonBalance.XR
 
         private float timeScaleBeforeOpening = 1f;
         private bool pausedByThisMenu;
+        private readonly List<GameObject> hiddenSimulatorOverlays = new List<GameObject>();
 
         public static bool IsAnyMenuOpen { get; private set; }
         public bool IsOpen => settingsPanel != null && settingsPanel.activeSelf;
@@ -54,12 +56,14 @@ namespace BalloonBalance.XR
             IsAnyMenuOpen = open;
             if (open)
             {
+                HideSimulatorOverlay();
                 timeScaleBeforeOpening = Time.timeScale;
                 Time.timeScale = 0f;
                 pausedByThisMenu = true;
             }
             else
             {
+                RestoreSimulatorOverlay();
                 RestoreTimeScale();
             }
 #endif
@@ -71,6 +75,7 @@ namespace BalloonBalance.XR
         {
 #if UNITY_EDITOR
             IsAnyMenuOpen = false;
+            RestoreSimulatorOverlay();
             RestoreTimeScale();
 #endif
         }
@@ -87,6 +92,26 @@ namespace BalloonBalance.XR
             if (!pausedByThisMenu) return;
             Time.timeScale = timeScaleBeforeOpening;
             pausedByThisMenu = false;
+        }
+
+        private void HideSimulatorOverlay()
+        {
+            hiddenSimulatorOverlays.Clear();
+            Transform[] objects = Resources.FindObjectsOfTypeAll<Transform>();
+            foreach (Transform candidate in objects)
+            {
+                if (candidate.name != "Input Selection" || !candidate.gameObject.activeSelf ||
+                    !candidate.gameObject.scene.IsValid()) continue;
+                hiddenSimulatorOverlays.Add(candidate.gameObject);
+                candidate.gameObject.SetActive(false);
+            }
+        }
+
+        private void RestoreSimulatorOverlay()
+        {
+            foreach (GameObject overlay in hiddenSimulatorOverlays)
+                if (overlay != null) overlay.SetActive(true);
+            hiddenSimulatorOverlays.Clear();
         }
     }
 }

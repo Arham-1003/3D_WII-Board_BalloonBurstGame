@@ -9,6 +9,7 @@ namespace BalloonBalance.Gameplay
     public sealed class BalloonGameManager : MonoBehaviour
     {
         private enum GameState { Ready, Countdown, Playing, Finished }
+        public enum SequenceMode { FixedSeeded, Random }
 
         [Header("Scene references")]
         [SerializeField] private BalloonTarget balloonPrefab;
@@ -21,21 +22,25 @@ namespace BalloonBalance.Gameplay
         [SerializeField] private Button startButton;
         [SerializeField] private Button restartButton;
         [SerializeField] private TrialEventLogger eventLogger;
+        [SerializeField] private TrialSampleLogger sampleLogger;
 
         [Header("Round")]
         [SerializeField, Min(5f)] private float roundDurationSeconds = 90f;
         [SerializeField, Min(1f)] private float countdownSeconds = 3f;
-        [SerializeField] private Vector3 phaseSpawnIntervals = new Vector3(1.45f, 1.25f, 1.05f);
-        [SerializeField] private Vector3 phaseSpeedMultipliers = new Vector3(0.85f, 1f, 1.15f);
+        [SerializeField] private Vector3 phaseSpawnIntervals = new Vector3(2.4f, 2.1f, 1.8f);
+        [SerializeField] private Vector3 phaseSpeedMultipliers = new Vector3(0.85f, 1f, 1.1f);
         [SerializeField] private Vector2 horizontalRange = new Vector2(-1.55f, 1.55f);
         [SerializeField] private Vector2 verticalRange = new Vector2(0.75f, 2.55f);
         [SerializeField] private Vector2 depthRange = new Vector2(7f, 12f);
-        [SerializeField] private Vector2 speedRange = new Vector2(1.25f, 2.25f);
+        [SerializeField] private Vector2 speedRange = new Vector2(0.7f, 1.15f);
         [SerializeField] private float missBoundaryZ = 2.75f;
         [SerializeField, Min(0.25f)] private float minimumActiveSpacing = 0.8f;
-        [SerializeField, Min(0.25f)] private float maximumConsecutiveJump = 1.35f;
+        [SerializeField, Min(0.25f)] private float maximumConsecutiveJump = 0.95f;
         [SerializeField, Range(1, 30)] private int spawnCandidateAttempts = 16;
         [SerializeField] private int poolSize = 18;
+        [SerializeField] private bool useBoardFriendlyPacing = true;
+        [SerializeField] private SequenceMode sequenceMode = SequenceMode.FixedSeeded;
+        [SerializeField] private int[] fixedRoundSeeds = { 104729, 130363, 155921, 196613 };
 
         private readonly List<BalloonTarget> balloons = new List<BalloonTarget>();
         private readonly List<BurstEffect> bursts = new List<BurstEffect>();
@@ -58,20 +63,32 @@ namespace BalloonBalance.Gameplay
         private float countdownRemaining;
         private Vector2 previousTargetPosition;
         private bool hasPreviousTarget;
+        private int nextFixedSeed;
 
         public bool IsPlaying => state == GameState.Playing;
         public int Score => score;
         public int Misses => misses;
+        public SequenceMode ActiveSequenceMode => sequenceMode;
+        public int ActiveSeed => practiceSeed;
         public int CurrentPhase => state == GameState.Playing
             ? Mathf.Clamp(Mathf.FloorToInt((roundDurationSeconds - remainingTime) / 30f) + 1, 1, 3)
             : 0;
 
         private void Awake()
         {
+            if (useBoardFriendlyPacing) ApplyBoardFriendlyPacing();
             startButton.onClick.AddListener(StartRound);
             restartButton.onClick.AddListener(StartRound);
             BuildPools();
             ShowReady();
+        }
+
+        private void ApplyBoardFriendlyPacing()
+        {
+            phaseSpawnIntervals = new Vector3(2.4f, 2.1f, 1.8f);
+            phaseSpeedMultipliers = new Vector3(0.85f, 1f, 1.1f);
+            speedRange = new Vector2(0.7f, 1.15f);
+            maximumConsecutiveJump = 0.95f;
         }
 
         private void Update()
@@ -107,7 +124,7 @@ namespace BalloonBalance.Gameplay
         public void StartRound()
         {
             foreach (BalloonTarget balloon in balloons) balloon.ReturnToPool();
-            practiceSeed = System.Environment.TickCount;
+            practiceSeed = ChooseRoundSeed();
             random = new System.Random(practiceSeed);
             nextBalloonId = 0;
             hasPreviousTarget = false;
@@ -122,6 +139,15 @@ namespace BalloonBalance.Gameplay
             startButton.gameObject.SetActive(false);
             restartButton.gameObject.SetActive(false);
             UpdateHud();
+        }
+
+        public void SelectSequenceMode(int mode) =>
+            SelectSequenceMode((SequenceMode)Mathf.Clamp(mode, 0, 1));
+
+        public void SelectSequenceMode(SequenceMode mode)
+        {
+            if (state == GameState.Countdown || state == GameState.Playing) return;
+            sequenceMode = mode;
         }
 
         public void RegisterHit(BalloonTarget balloon, Vector3 position)
@@ -158,6 +184,7 @@ namespace BalloonBalance.Gameplay
         {
             state = GameState.Finished;
             eventLogger.CompleteTrial(score, misses, practiceSeed);
+            sampleLogger?.CompleteTrial();
             foreach (BalloonTarget balloon in balloons) balloon.ReturnToPool();
             titleText.text = "ROUND COMPLETE";
             statusText.text = $"FINAL SCORE  {score}\nMISSES  {misses}";
@@ -166,10 +193,21 @@ namespace BalloonBalance.Gameplay
 
         private void BeginPlaying()
         {
-            eventLogger.BeginPracticeTrial(practiceSeed);
+            string mode = sequenceMode.ToString();
+            eventLogger.BeginPracticeTrial(practiceSeed, mode);
+            sampleLogger?.BeginPracticeTrial(practiceSeed, mode);
             state = GameState.Playing;
             statusText.text = "MOVE THE POINTER INTO THE BALLOONS";
             UpdateHud();
+        }
+
+        private int ChooseRoundSeed()
+        {
+            if (sequenceMode == SequenceMode.Random || fixedRoundSeeds == null || fixedRoundSeeds.Length == 0)
+                return System.Environment.TickCount;
+            int seed = fixedRoundSeeds[nextFixedSeed % fixedRoundSeeds.Length];
+            nextFixedSeed++;
+            return seed;
         }
 
         private void SpawnBalloon()

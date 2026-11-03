@@ -73,11 +73,20 @@ namespace BalloonBalance.Editor
             interactionCenter.transform.SetParent(gameRoot.transform, false);
             interactionCenter.transform.position = new Vector3(0f, 1.65f, 3f);
 
-            GameObject inputObject = new GameObject("Keyboard CoP Input");
+            GameObject inputObject = new GameObject("CoP Input Pipeline");
             inputObject.transform.SetParent(gameRoot.transform, false);
             KeyboardCopInputSource keyboard = inputObject.AddComponent<KeyboardCopInputSource>();
+            SyntheticBoardInputSource synthetic = inputObject.AddComponent<SyntheticBoardInputSource>();
+            CsvPlaybackInputSource csv = inputObject.AddComponent<CsvPlaybackInputSource>();
+            UdpCopInputSource udp = inputObject.AddComponent<UdpCopInputSource>();
             CopInputManager inputManager = inputObject.AddComponent<CopInputManager>();
-            SetReference(inputManager, "inputSourceBehaviour", keyboard);
+            SetReference(inputManager, "keyboardSource", keyboard);
+            SetReference(inputManager, "syntheticSource", synthetic);
+            SetReference(inputManager, "csvSource", csv);
+            SetReference(inputManager, "udpSource", udp);
+            synthetic.enabled = false;
+            csv.enabled = false;
+            udp.enabled = false;
 
             GameObject pointer = (GameObject)PrefabUtility.InstantiatePrefab(pointerPrefab, scene);
             pointer.name = "Balance Pointer";
@@ -108,7 +117,7 @@ namespace BalloonBalance.Editor
             promptText.text = "INPUT & VIEW SETTINGS   [ Y ]";
 
             GameObject settingsPanel = CreatePanel(canvas.transform, "Input & View Settings",
-                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(860f, 520f),
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(860f, 700f),
                 new Color(0.015f, 0.07f, 0.13f, 0.97f));
             Text settingsTitle = CreateText(settingsPanel.transform, "Settings Title", font, 40,
                 TextAnchor.MiddleCenter, new Color(0.15f, 0.85f, 1f), new Vector2(0.5f, 1f),
@@ -119,16 +128,40 @@ namespace BalloonBalance.Editor
                 new Vector2(0f, -142f), new Vector2(720f, 120f));
             settingsHelp.fontStyle = FontStyle.Normal;
             settingsHelp.text = "Pointer: WASD or arrow keys\nOpen / close this window: Y\nThe round is paused while this window is open.";
+            Text sourceLabel = CreateText(settingsPanel.transform, "Input Source Label", font, 20,
+                TextAnchor.MiddleLeft, Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+                new Vector2(-360f, -235f), new Vector2(240f, 45f));
+            sourceLabel.text = "CONTROL INPUT";
+            Dropdown sourceDropdown = CreateDropdown(settingsPanel.transform, "Input Source Dropdown", font, new Vector2(100f, -235f));
+            Text filterLabel = CreateText(settingsPanel.transform, "Filter Selection Label", font, 20,
+                TextAnchor.MiddleLeft, Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+                new Vector2(-360f, -295f), new Vector2(240f, 45f));
+            filterLabel.text = "CONTROL FILTER";
+            Dropdown filterDropdown = CreateDropdown(settingsPanel.transform, "Filter Selection Dropdown", font, new Vector2(100f, -295f));
+            Text sequenceLabel = CreateText(settingsPanel.transform, "Round Sequence Label", font, 20,
+                TextAnchor.MiddleLeft, Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+                new Vector2(-360f, -355f), new Vector2(240f, 45f));
+            sequenceLabel.text = "ROUND SEQUENCE";
+            Dropdown sequenceDropdown = CreateDropdown(settingsPanel.transform, "Round Sequence Dropdown", font, new Vector2(100f, -355f));
+            Text connectionText = CreateText(settingsPanel.transform, "Connection Status", font, 19,
+                TextAnchor.MiddleCenter, new Color(1f, 0.65f, 0.2f), new Vector2(0.5f, 1f),
+                new Vector2(0.5f, 1f), new Vector2(0f, -405f), new Vector2(720f, 42f));
+            CopInputSettingsController inputSettings = settingsPanel.AddComponent<CopInputSettingsController>();
+            SetReference(inputSettings, "inputManager", inputManager);
+            SetReference(inputSettings, "sourceDropdown", sourceDropdown);
+            SetReference(inputSettings, "filterDropdown", filterDropdown);
+            SetReference(inputSettings, "sequenceDropdown", sequenceDropdown);
+            SetReference(inputSettings, "connectionText", connectionText);
             Toggle headLookToggle = CreateToggle(settingsPanel.transform, "Simulator Head Look Toggle", font,
-                "ENABLE DESKTOP HEAD LOOK (HOLD RIGHT MOUSE)", new Vector2(-70f, -290f));
+                "ENABLE DESKTOP HEAD LOOK (HOLD RIGHT MOUSE)", new Vector2(-70f, -455f));
             headLookToggle.GetComponent<RectTransform>().sizeDelta = new Vector2(720f, 52f);
             Text toggleExplanation = CreateText(settingsPanel.transform, "Head Look Explanation", font, 18,
                 TextAnchor.UpperLeft, new Color(0.75f, 0.86f, 0.94f), new Vector2(0.5f, 1f),
-                new Vector2(0.5f, 1f), new Vector2(0f, -350f), new Vector2(720f, 70f));
+                new Vector2(0.5f, 1f), new Vector2(0f, -505f), new Vector2(720f, 55f));
             toggleExplanation.fontStyle = FontStyle.Normal;
             toggleExplanation.text = "OFF keeps the desktop camera centred. ON allows rotation only; it never moves the player or pointer.";
             Button closeSettingsButton = CreateButton(settingsPanel.transform, "Close Settings Button", font,
-                "CLOSE  [ Y ]", new Vector2(0f, -215f));
+                "CLOSE  [ Y ]", new Vector2(0f, -305f));
             EditorKeyboardCameraIsolation cameraIsolation = camera != null
                 ? camera.GetComponent<EditorKeyboardCameraIsolation>()
                 : null;
@@ -145,7 +178,10 @@ namespace BalloonBalance.Editor
             GameObject managerObject = new GameObject("Game Manager");
             managerObject.transform.SetParent(gameRoot.transform, false);
             TrialEventLogger eventLogger = managerObject.AddComponent<TrialEventLogger>();
+            TrialSampleLogger sampleLogger = managerObject.AddComponent<TrialSampleLogger>();
+            SetReference(sampleLogger, "inputManager", inputManager);
             BalloonGameManager manager = managerObject.AddComponent<BalloonGameManager>();
+            SetReference(inputSettings, "gameManager", manager);
             SerializedObject managerSerialized = new SerializedObject(manager);
             Set(managerSerialized, "balloonPrefab", balloonPrefab.GetComponent<BalloonTarget>());
             Set(managerSerialized, "burstPrefab", burstPrefab.GetComponent<BurstEffect>());
@@ -157,6 +193,7 @@ namespace BalloonBalance.Editor
             Set(managerSerialized, "startButton", startButton);
             Set(managerSerialized, "restartButton", restartButton);
             Set(managerSerialized, "eventLogger", eventLogger);
+            Set(managerSerialized, "sampleLogger", sampleLogger);
             managerSerialized.ApplyModifiedPropertiesWithoutUndo();
 
             GameObject eventSystem = new GameObject("EventSystem");
@@ -362,6 +399,68 @@ namespace BalloonBalance.Editor
             textRect.offsetMax = Vector2.zero;
             text.text = label;
             return button;
+        }
+
+        private static Dropdown CreateDropdown(Transform parent, string name, Font font, Vector2 position)
+        {
+            GameObject root = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Dropdown));
+            root.transform.SetParent(parent, false);
+            RectTransform rect = root.GetComponent<RectTransform>();
+            rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 1f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = position;
+            rect.sizeDelta = new Vector2(430f, 48f);
+            root.GetComponent<Image>().color = new Color(0.04f, 0.22f, 0.36f, 1f);
+
+            Text caption = CreateText(root.transform, "Label", font, 19, TextAnchor.MiddleLeft, Color.white,
+                Vector2.zero, Vector2.one, new Vector2(16f, 0f), new Vector2(-54f, 0f));
+            Text arrow = CreateText(root.transform, "Arrow", font, 22, TextAnchor.MiddleCenter, Color.white,
+                new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(-28f, 0f), new Vector2(40f, 0f));
+            arrow.text = "▼";
+
+            GameObject template = CreatePanel(root.transform, "Template", new Vector2(0f, 0f),
+                new Vector2(0f, 1f), new Vector2(0f, -4f), new Vector2(430f, 190f), new Color(0.02f, 0.12f, 0.22f, 1f));
+            RectTransform templateRect = template.GetComponent<RectTransform>();
+            templateRect.anchorMin = new Vector2(0f, 0f);
+            templateRect.anchorMax = new Vector2(1f, 0f);
+            templateRect.pivot = new Vector2(0.5f, 1f);
+            templateRect.anchoredPosition = new Vector2(0f, -4f);
+            templateRect.sizeDelta = new Vector2(0f, 190f);
+            ScrollRect scroll = template.AddComponent<ScrollRect>();
+            GameObject viewport = CreatePanel(template.transform, "Viewport", Vector2.zero, Vector2.zero,
+                Vector2.zero, new Vector2(430f, 190f), Color.clear);
+            Stretch(viewport.GetComponent<RectTransform>(), Vector2.zero, Vector2.zero);
+            viewport.AddComponent<Mask>().showMaskGraphic = false;
+            GameObject content = new GameObject("Content", typeof(RectTransform));
+            content.transform.SetParent(viewport.transform, false);
+            RectTransform contentRect = content.GetComponent<RectTransform>();
+            contentRect.anchorMin = new Vector2(0f, 1f);
+            contentRect.anchorMax = new Vector2(1f, 1f);
+            contentRect.pivot = new Vector2(0.5f, 1f);
+            contentRect.anchoredPosition = Vector2.zero;
+            contentRect.sizeDelta = new Vector2(0f, 38f);
+            scroll.viewport = viewport.GetComponent<RectTransform>();
+            scroll.content = content.GetComponent<RectTransform>();
+            scroll.horizontal = false;
+            GameObject item = new GameObject("Item", typeof(RectTransform), typeof(Image), typeof(Toggle));
+            item.transform.SetParent(content.transform, false);
+            RectTransform itemRect = item.GetComponent<RectTransform>();
+            itemRect.anchorMin = new Vector2(0f, 0.5f); itemRect.anchorMax = new Vector2(1f, 0.5f);
+            itemRect.pivot = new Vector2(0.5f, 0.5f);
+            itemRect.anchoredPosition = Vector2.zero;
+            itemRect.sizeDelta = new Vector2(0f, 38f);
+            Image itemImage = item.GetComponent<Image>();
+            itemImage.color = new Color(0.03f, 0.16f, 0.25f, 1f);
+            Toggle itemToggle = item.GetComponent<Toggle>();
+            itemToggle.targetGraphic = itemImage;
+            Text itemLabel = CreateText(item.transform, "Item Label", font, 18, TextAnchor.MiddleLeft, Color.white,
+                Vector2.zero, Vector2.one, new Vector2(16f, 0f), new Vector2(-16f, 0f));
+            Dropdown dropdown = root.GetComponent<Dropdown>();
+            dropdown.captionText = caption;
+            dropdown.template = template.GetComponent<RectTransform>();
+            dropdown.itemText = itemLabel;
+            template.SetActive(false);
+            return dropdown;
         }
 
         private static Toggle CreateToggle(Transform parent, string name, Font font, string label, Vector2 position)

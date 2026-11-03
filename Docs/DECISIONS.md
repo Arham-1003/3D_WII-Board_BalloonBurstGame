@@ -288,6 +288,42 @@ This file records approved architectural and experimental decisions. Add a dated
 
 **Consequences:** Synthetic, CSV, and UDP development can proceed now. Physical units, final Butterworth sample rate, live bridge library, and hardware signs remain unverified.
 
+## D029: Recorder-tail UDP bridge and selected live filter processing
+
+**Date:** 2026-11-01
+
+**Status:** Accepted
+
+**Decision:** Use the official Recorder's documented 12-column output as the bridge input. Under the confirmed standard board orientation, map Recorder `TL`/`TR` to front-left/front-right and `BL`/`BR` to rear-left/rear-right. The Python bridge preserves each observed raw row before sending a versioned UDP packet. Unity processes every accepted sequence once and runs only the participant's selected Raw, Moving Average, EMA, Butterworth, or Median condition. Raw corner loads and raw CoP are always recorded alongside the selected live result; inactive filtered-result columns are explicitly `NaN`. The Y settings window selects both the input source and filter and reports live/stale state.
+
+**Reason:** One acquisition stream plus raw preservation allows identical data to be replayed later, while each participant uses only the assigned live filter condition. Source and receive timestamps plus raw corner loads preserve auditability. Keeping input and filter selection outside gameplay prevents it from depending directly on Recorder, Bluetooth, UDP, or filter implementations.
+
+**Consequences:** The software path is ready for a board pilot without VR. Physical corner order, ML/AP signs, acquisition rate, jitter, Recorder flush latency, and disconnect behavior must still be verified before measured trials. If physical sign checks disagree with the provisional standard mapping, correct the bridge mapping once and record the change before collecting participants.
+
+## D030: Board-friendly pacing and selectable sequence policy
+
+**Date:** 2026-11-01
+
+**Status:** Accepted
+
+**Decision:** Use slower fixed difficulty phases for board control: spawn intervals of 2.4, 2.1, and 1.8 seconds; target speeds from 0.7 to 1.15 world units per second with modest phase multipliers; and a maximum consecutive target jump of 0.95 world units. Before a round, the Y settings window selects either Fixed Matched Sequences or Random Sequence. Fixed mode cycles the hidden seed set `104729`, `130363`, `155921`, and `196613` in stable order. Sequence mode and seed are written to sample/event records and cannot be changed during play.
+
+**Reason:** Body-lean input is slower than keyboard input and live filtering adds condition-dependent response delay. Conservative pacing preserves reachability and stability, while matched seeds make filter conditions comparable across participants and random mode remains available for practice.
+
+**Consequences:** The game remains a fixed 90-second, three-phase challenge, but final pacing is provisional until piloted with the physical board. Operators must choose the sequence policy before starting a measured round and must use the same fixed-seed order across compared participants.
+
+## D031: Participant-specific five-point pointer calibration
+
+**Date:** 2026-11-01
+
+**Status:** Accepted
+
+**Decision:** Before measured rounds, use the paused Y settings window to capture raw CoP at neutral stance and at each participant's comfortable left, right, forward, and backward limits. Map those asymmetric ranges continuously to the fixed interaction-plane bounds. Use normalized 0.10 ranges only as provisional fallbacks and reject directional captures below 0.02 from neutral.
+
+**Reason:** A fixed wide range made the pointer too slow and could encourage excessive leaning. Participant-specific comfortable limits make the full target area reachable without coupling calibration to the selected experimental filter.
+
+**Consequences:** Calibration uses valid raw CoP while gameplay continues to use the assigned causal filter. Operators must recalibrate each participant before their measured rounds. Range safety, sign orientation, repeatability, and calibration persistence remain hardware-dependent and must be validated with the physical board.
+
 ## Decision template
 
 ```markdown

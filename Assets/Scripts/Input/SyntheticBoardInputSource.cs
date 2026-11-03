@@ -34,6 +34,9 @@ namespace BalloonBalance.Input
 
         private void Update()
         {
+            // Unity can invoke Update during scene/test lifecycle transitions before a
+            // newly selected source has received its normal OnEnable initialization.
+            random ??= new System.Random(12345);
             double now = Time.realtimeSinceStartupAsDouble;
             if (now < nextSampleTime) return;
             nextSampleTime = now + 1.0 / sampleRateHz;

@@ -25,6 +25,11 @@
 **/[Oo]bj/
 *.log
 
+# Python bridge caches and local raw acquisition logs
+__pycache__/
+*.py[cod]
+/Tools/WiiBoardBridge/BridgeLogs/
+
 # By default unity supports Blender asset imports, *.blend1 blender files do not need to be commited to version control.
 *.blend1
 *.blend1.meta

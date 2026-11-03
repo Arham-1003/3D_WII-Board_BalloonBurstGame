@@ -79,7 +79,7 @@ namespace BalloonBalance.Editor
             KeyboardCopInputSource keyboardSource = input.AddComponent<KeyboardCopInputSource>();
             CopInputManager inputManager = input.AddComponent<CopInputManager>();
             SerializedObject inputManagerSerialized = new SerializedObject(inputManager);
-            inputManagerSerialized.FindProperty("inputSourceBehaviour").objectReferenceValue = keyboardSource;
+            inputManagerSerialized.FindProperty("keyboardSource").objectReferenceValue = keyboardSource;
             inputManagerSerialized.ApplyModifiedPropertiesWithoutUndo();
 
             GameObject pointer = (GameObject)PrefabUtility.InstantiatePrefab(pointerPrefab, scene);

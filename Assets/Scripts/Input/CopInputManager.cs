@@ -1,5 +1,6 @@
-using BalloonBalance.Core;
+using System;
 using BalloonBalance.Calibration;
+using BalloonBalance.Core;
 using BalloonBalance.SignalProcessing;
 using UnityEngine;
 
@@ -7,79 +8,244 @@ namespace BalloonBalance.Input
 {
     public sealed class CopInputManager : MonoBehaviour
     {
-        private enum FilterSelection { Raw, MovingAverage, Ema, Butterworth }
+        public enum FilterSelection { Raw, MovingAverage, Ema, Butterworth, Median }
+        public enum CalibrationStep { Idle, Neutral, Left, Right, Forward, Backward, Complete }
 
-        [SerializeField] private MonoBehaviour inputSourceBehaviour;
+        [Header("Sources")]
+        [SerializeField] private CopInputMode inputMode = CopInputMode.Keyboard;
+        [SerializeField] private MonoBehaviour keyboardSource;
+        [SerializeField] private MonoBehaviour syntheticSource;
+        [SerializeField] private MonoBehaviour csvSource;
+        [SerializeField] private MonoBehaviour udpSource;
+        [Header("Processing")]
         [SerializeField] private FilterSelection filterSelection = FilterSelection.Ema;
         [SerializeField, Min(0.1f)] private float cutoffHz = 2.5f;
         [SerializeField, Min(2f)] private float nominalSampleRateHz = 50f;
         [SerializeField, Range(1, 30)] private int movingAverageWindow = 5;
+        [SerializeField, Range(1, 9)] private int medianWindow = 3;
         [SerializeField] private CalibrationProfile calibration = new CalibrationProfile();
 
         private ICopInputSource inputSource;
-        private ICopFilter filter;
+        private readonly ICopFilter[] filters = new ICopFilter[5];
         private double previousSourceTime;
+        private long lastProcessedSequence = long.MinValue;
 
+        public event Action<ProcessedCopSample> SampleProcessed;
         public bool HasValidSample { get; private set; }
         public CopSample LatestSample { get; private set; }
         public Vector2 ControlPosition { get; private set; }
+        public Vector2 RawOutput { get; private set; }
+        public Vector2 MovingAverageOutput { get; private set; }
+        public Vector2 EmaOutput { get; private set; }
+        public Vector2 ButterworthOutput { get; private set; }
+        public Vector2 MedianOutput { get; private set; }
+        public CopInputMode InputMode => inputMode;
+        public FilterSelection ActiveFilter => filterSelection;
+        public string ConnectionStatus => inputSource == null ? "NOT CONFIGURED" : inputSource.IsConnected ? "CONNECTED" : "WAITING / STALE";
+        public CalibrationStep CurrentCalibrationStep { get; private set; }
+        public string CalibrationInstruction => CurrentCalibrationStep switch
+        {
+            CalibrationStep.Neutral => "Stand naturally in the centre, then press CAPTURE CENTRE.",
+            CalibrationStep.Left => "Lean comfortably left, then press CAPTURE LEFT.",
+            CalibrationStep.Right => "Lean comfortably right, then press CAPTURE RIGHT.",
+            CalibrationStep.Forward => "Lean comfortably forward, then press CAPTURE FORWARD.",
+            CalibrationStep.Backward => "Lean comfortably backward, then press CAPTURE BACKWARD.",
+            CalibrationStep.Complete => "Calibration saved. The full play area now matches your comfortable lean.",
+            _ => "Calibrate before a participant's measured rounds."
+        };
 
         private void Awake()
         {
-            inputSource = inputSourceBehaviour as ICopInputSource;
-            if (inputSource == null)
-            {
-                Debug.LogError(
-                    $"{nameof(CopInputManager)} requires a component implementing {nameof(ICopInputSource)}.",
-                    this);
-                enabled = false;
-            }
-            filter = CreateFilter();
-            filter.Reset();
+            calibration.UpgradeLegacyWideDefaults();
+            BuildFilters();
+            SelectInput(inputMode);
         }
 
         private void Update()
         {
             HasValidSample = false;
-            ControlPosition = Vector2.zero;
-            if (!inputSource.IsConnected ||
-                !inputSource.TryGetLatestSample(out CopSample sample) ||
-                !sample.IsValid)
+            if (inputSource == null || !inputSource.IsConnected)
             {
+                ControlPosition = Vector2.zero;
                 return;
             }
 
-            LatestSample = sample;
-            HasValidSample = true;
-            if (sample.SourceType == CopSourceType.Keyboard)
+            bool processed = false;
+            if (inputSource is IBufferedCopInputSource buffered)
             {
-                ControlPosition = Vector2.ClampMagnitude(sample.FilteredCop, 1f);
-                return;
+                while (buffered.TryDequeueSample(out CopSample queued)) processed |= ProcessOnce(queued);
             }
+            else if (inputSource.TryGetLatestSample(out CopSample latest)) processed = ProcessOnce(latest);
+            HasValidSample = (processed || lastProcessedSequence != long.MinValue) && LatestSample.IsValid;
+        }
 
-            float deltaTime = previousSourceTime > 0d
-                ? Mathf.Max(0f, (float)(sample.SourceTimestampSeconds - previousSourceTime))
-                : 1f / nominalSampleRateHz;
-            previousSourceTime = sample.SourceTimestampSeconds;
-            Vector2 filtered = filter.Process(sample.RawCop, deltaTime);
-            ControlPosition = CopMapper.Map(filtered, calibration);
+        public void SelectInput(int mode) => SelectInput((CopInputMode)Mathf.Clamp(mode, 0, 3));
+
+        public void SelectFilter(int filter) => SelectFilter((FilterSelection)Mathf.Clamp(filter, 0, 4));
+
+        public void SelectFilter(FilterSelection filter)
+        {
+            if (filterSelection == filter) return;
+            filterSelection = filter;
+            ResetProcessing();
+        }
+
+        public void BeginCalibration()
+        {
+            CurrentCalibrationStep = CalibrationStep.Neutral;
+            ResetProcessing();
+        }
+
+        public bool CaptureCalibrationPoint()
+        {
+            if (CurrentCalibrationStep == CalibrationStep.Idle || CurrentCalibrationStep == CalibrationStep.Complete)
+            {
+                BeginCalibration();
+                return true;
+            }
+            if (!HasValidSample || !IsFinite(LatestSample.RawCop)) return false;
+
+            Vector2 raw = LatestSample.RawCop;
+            const float minimumComfortableRange = 0.02f;
+            switch (CurrentCalibrationStep)
+            {
+                case CalibrationStep.Neutral:
+                    calibration.neutral = raw;
+                    CurrentCalibrationStep = CalibrationStep.Left;
+                    break;
+                case CalibrationStep.Left:
+                    if (calibration.neutral.x - raw.x < minimumComfortableRange) return false;
+                    calibration.leftRange = calibration.neutral.x - raw.x;
+                    CurrentCalibrationStep = CalibrationStep.Right;
+                    break;
+                case CalibrationStep.Right:
+                    if (raw.x - calibration.neutral.x < minimumComfortableRange) return false;
+                    calibration.rightRange = raw.x - calibration.neutral.x;
+                    CurrentCalibrationStep = CalibrationStep.Forward;
+                    break;
+                case CalibrationStep.Forward:
+                    if (raw.y - calibration.neutral.y < minimumComfortableRange) return false;
+                    calibration.forwardRange = raw.y - calibration.neutral.y;
+                    CurrentCalibrationStep = CalibrationStep.Backward;
+                    break;
+                case CalibrationStep.Backward:
+                    if (calibration.neutral.y - raw.y < minimumComfortableRange) return false;
+                    calibration.backwardRange = calibration.neutral.y - raw.y;
+                    calibration.createdAtUtc = DateTime.UtcNow.ToString("O");
+                    CurrentCalibrationStep = CalibrationStep.Complete;
+                    ResetProcessing();
+                    break;
+            }
+            return true;
+        }
+
+        private static bool IsFinite(Vector2 value) =>
+            !float.IsNaN(value.x) && !float.IsInfinity(value.x) &&
+            !float.IsNaN(value.y) && !float.IsInfinity(value.y);
+
+        public void SelectInput(CopInputMode mode)
+        {
+            inputMode = mode;
+            SetSourceEnabled(keyboardSource, mode == CopInputMode.Keyboard);
+            SetSourceEnabled(syntheticSource, mode == CopInputMode.SyntheticBoard);
+            SetSourceEnabled(csvSource, mode == CopInputMode.CsvPlayback);
+            SetSourceEnabled(udpSource, mode == CopInputMode.LiveUdp);
+            inputSource = SourceFor(mode) as ICopInputSource;
+            ResetProcessing();
+            if (inputSource == null) Debug.LogError($"No valid {mode} input source is assigned.", this);
         }
 
         public void ResetProcessing()
         {
             previousSourceTime = 0d;
-            filter?.Reset();
+            lastProcessedSequence = long.MinValue;
+            HasValidSample = false;
+            ControlPosition = Vector2.zero;
+            foreach (ICopFilter filter in filters) filter?.Reset();
         }
 
-        private ICopFilter CreateFilter()
+        private bool ProcessOnce(CopSample sample)
         {
-            switch (filterSelection)
+            if (sample.SequenceNumber == lastProcessedSequence) return false;
+            lastProcessedSequence = sample.SequenceNumber;
+            if (!sample.IsValid)
             {
-                case FilterSelection.MovingAverage: return new MovingAverageCopFilter(movingAverageWindow);
-                case FilterSelection.Ema: return new EmaCopFilter(cutoffHz);
-                case FilterSelection.Butterworth: return new ButterworthCopFilter(cutoffHz, nominalSampleRateHz);
-                default: return new PassThroughCopFilter();
+                LatestSample = sample;
+                SampleProcessed?.Invoke(new ProcessedCopSample(sample, RawOutput, MovingAverageOutput,
+                    EmaOutput, ButterworthOutput, MedianOutput, ControlPosition, 0f));
+                return false;
             }
+            float deltaTime = previousSourceTime > 0d
+                ? Mathf.Max(0.0001f, (float)(sample.SourceTimestampSeconds - previousSourceTime))
+                : 1f / nominalSampleRateHz;
+            previousSourceTime = sample.SourceTimestampSeconds;
+
+            if (sample.SourceType == CopSourceType.Keyboard)
+            {
+                RawOutput = MovingAverageOutput = EmaOutput = ButterworthOutput = MedianOutput = sample.FilteredCop;
+                ControlPosition = Vector2.ClampMagnitude(sample.FilteredCop, 1f);
+            }
+            else
+            {
+                RawOutput = sample.RawCop;
+                MovingAverageOutput = EmaOutput = ButterworthOutput = MedianOutput =
+                    new Vector2(float.NaN, float.NaN);
+                Vector2 selected = filters[(int)filterSelection].Process(sample.RawCop, deltaTime);
+                switch (filterSelection)
+                {
+                    case FilterSelection.MovingAverage: MovingAverageOutput = selected; break;
+                    case FilterSelection.Ema: EmaOutput = selected; break;
+                    case FilterSelection.Butterworth: ButterworthOutput = selected; break;
+                    case FilterSelection.Median: MedianOutput = selected; break;
+                    default: RawOutput = selected; break;
+                }
+                ControlPosition = CopMapper.Map(selected, calibration);
+            }
+
+            LatestSample = sample;
+            SampleProcessed?.Invoke(new ProcessedCopSample(sample, RawOutput, MovingAverageOutput,
+                EmaOutput, ButterworthOutput, MedianOutput, ControlPosition, deltaTime));
+            return true;
         }
+
+        private void BuildFilters()
+        {
+            filters[0] = new PassThroughCopFilter();
+            filters[1] = new MovingAverageCopFilter(movingAverageWindow);
+            filters[2] = new EmaCopFilter(cutoffHz);
+            filters[3] = new ButterworthCopFilter(cutoffHz, nominalSampleRateHz);
+            filters[4] = new MedianCopFilter(medianWindow);
+        }
+
+        private MonoBehaviour SourceFor(CopInputMode mode) => mode switch
+        {
+            CopInputMode.SyntheticBoard => syntheticSource,
+            CopInputMode.CsvPlayback => csvSource,
+            CopInputMode.LiveUdp => udpSource,
+            _ => keyboardSource
+        };
+
+        private static void SetSourceEnabled(MonoBehaviour source, bool value)
+        {
+            if (source != null) source.enabled = value;
+        }
+    }
+
+    public readonly struct ProcessedCopSample
+    {
+        public ProcessedCopSample(CopSample source, Vector2 raw, Vector2 movingAverage, Vector2 ema,
+            Vector2 butterworth, Vector2 median, Vector2 control, float deltaTime)
+        {
+            Source = source; Raw = raw; MovingAverage = movingAverage; Ema = ema;
+            Butterworth = butterworth; Median = median; Control = control; DeltaTime = deltaTime;
+        }
+        public CopSample Source { get; }
+        public Vector2 Raw { get; }
+        public Vector2 MovingAverage { get; }
+        public Vector2 Ema { get; }
+        public Vector2 Butterworth { get; }
+        public Vector2 Median { get; }
+        public Vector2 Control { get; }
+        public float DeltaTime { get; }
     }
 }

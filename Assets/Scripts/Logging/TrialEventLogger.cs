@@ -12,21 +12,23 @@ namespace BalloonBalance.Logging
         private readonly Stopwatch monotonicClock = new Stopwatch();
         private StreamWriter writer;
         private string inProgressPath;
+        private string activeSequenceMode;
 
         public string SavedPath { get; private set; }
         public int EventCount { get; private set; }
 
-        public void BeginPracticeTrial(int seed)
+        public void BeginPracticeTrial(int seed, string sequenceMode = "Random")
         {
             CloseTrial(false);
             string directory = Path.Combine(Application.persistentDataPath, "TrialLogs");
             Directory.CreateDirectory(directory);
             string stamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss_fff", CultureInfo.InvariantCulture);
-            string baseName = $"practice_{stamp}_seed-{seed}";
+            activeSequenceMode = sequenceMode;
+            string baseName = $"practice_{stamp}_{sequenceMode}_seed-{seed}";
             inProgressPath = Path.Combine(directory, baseName + ".events.csv.inprogress");
             SavedPath = Path.Combine(directory, baseName + ".events.csv");
             writer = new StreamWriter(inProgressPath, false, new UTF8Encoding(false));
-            writer.WriteLine("monotonic_seconds,event_type,balloon_id,x,y,z,speed,score,misses,practice_seed");
+            writer.WriteLine("monotonic_seconds,event_type,balloon_id,x,y,z,speed,score,misses,practice_seed,sequence_mode");
             writer.Flush();
             EventCount = 0;
             monotonicClock.Restart();
@@ -61,7 +63,8 @@ namespace BalloonBalance.Logging
                 speed.ToString("F4", CultureInfo.InvariantCulture),
                 score.ToString(CultureInfo.InvariantCulture),
                 misses.ToString(CultureInfo.InvariantCulture),
-                seed.ToString(CultureInfo.InvariantCulture)));
+                seed.ToString(CultureInfo.InvariantCulture),
+                activeSequenceMode));
             writer.Flush();
             EventCount++;
         }

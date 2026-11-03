@@ -46,6 +46,46 @@ namespace BalloonBalance.SignalProcessing
         }
     }
 
+    public sealed class MedianCopFilter : ICopFilter
+    {
+        private readonly Vector2[] buffer;
+        private readonly float[] sortedX;
+        private readonly float[] sortedY;
+        private int index;
+        private int count;
+        public string Name => "Median";
+
+        public MedianCopFilter(int windowSize)
+        {
+            int size = Mathf.Max(1, windowSize);
+            if (size % 2 == 0) size++;
+            buffer = new Vector2[size];
+            sortedX = new float[size];
+            sortedY = new float[size];
+        }
+
+        public void Reset() { index = count = 0; }
+
+        public Vector2 Process(Vector2 rawCop, float deltaTime)
+        {
+            buffer[index] = rawCop;
+            index = (index + 1) % buffer.Length;
+            count = Mathf.Min(count + 1, buffer.Length);
+
+            for (int sample = 0; sample < count; sample++)
+            {
+                sortedX[sample] = buffer[sample].x;
+                sortedY[sample] = buffer[sample].y;
+            }
+            System.Array.Sort(sortedX, 0, count);
+            System.Array.Sort(sortedY, 0, count);
+            int middle = count / 2;
+            if (count % 2 == 1) return new Vector2(sortedX[middle], sortedY[middle]);
+            return new Vector2((sortedX[middle - 1] + sortedX[middle]) * 0.5f,
+                (sortedY[middle - 1] + sortedY[middle]) * 0.5f);
+        }
+    }
+
     public sealed class ButterworthCopFilter : ICopFilter
     {
         private readonly float b0, b1, b2, a1, a2;

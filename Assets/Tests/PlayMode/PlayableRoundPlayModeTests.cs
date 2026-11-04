@@ -123,10 +123,22 @@ namespace BalloonBalance.Tests.PlayMode
             Assert.That(input.InputMode, Is.EqualTo(CopInputMode.SyntheticBoard));
             Dropdown filter = Object.FindObjectsByType<Dropdown>(FindObjectsInactive.Include, FindObjectsSortMode.None)
                 .First(dropdown => dropdown.name == "Filter Selection Dropdown");
-            Assert.That(filter.options.Count, Is.EqualTo(5));
-            filter.value = (int)CopInputManager.FilterSelection.Median;
+            Assert.That(filter.options.Count, Is.EqualTo(7));
+            filter.value = (int)CopInputManager.FilterSelection.AdaptiveLowPass;
             filter.onValueChanged.Invoke(filter.value);
-            Assert.That(input.ActiveFilter, Is.EqualTo(CopInputManager.FilterSelection.Median));
+            Assert.That(input.ActiveFilter, Is.EqualTo(CopInputManager.FilterSelection.AdaptiveLowPass));
+            Assert.That(filter.template.rect.height, Is.GreaterThanOrEqualTo(280f));
+            filter.Show();
+            yield return null;
+            Canvas.ForceUpdateCanvases();
+            GameObject dropdownList = GameObject.Find("Dropdown List");
+            Assert.That(dropdownList, Is.Not.Null);
+            Text[] visibleFilterLabels = dropdownList.GetComponentsInChildren<Text>(false)
+                .Where(label => filter.options.Any(option => option.text == label.text)).ToArray();
+            Assert.That(visibleFilterLabels.Length, Is.EqualTo(7));
+            Assert.That(visibleFilterLabels.All(label => !label.canvasRenderer.cull), Is.True,
+                "Every filter option must render inside the dropdown viewport.");
+            filter.Hide();
             Dropdown sequence = Object.FindObjectsByType<Dropdown>(FindObjectsInactive.Include, FindObjectsSortMode.None)
                 .First(dropdown => dropdown.name == "Round Sequence Dropdown");
             Assert.That(sequence.options.Count, Is.EqualTo(2));
@@ -148,6 +160,8 @@ namespace BalloonBalance.Tests.PlayMode
             StringAssert.Contains("moving_average_x", csv);
             StringAssert.Contains("butterworth_x", csv);
             StringAssert.Contains("median_x", csv);
+            StringAssert.Contains("adaptive_low_pass_x", csv);
+            StringAssert.Contains("alpha_beta_x", csv);
             StringAssert.Contains("raw_x,raw_y", csv);
             StringAssert.Contains("FixedSeeded", csv);
             StringAssert.Contains("SyntheticBoard", csv);

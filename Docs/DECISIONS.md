@@ -294,7 +294,7 @@ This file records approved architectural and experimental decisions. Add a dated
 
 **Status:** Accepted
 
-**Decision:** Use the official Recorder's documented 12-column output as the bridge input. Under the confirmed standard board orientation, map Recorder `TL`/`TR` to front-left/front-right and `BL`/`BR` to rear-left/rear-right. The Python bridge preserves each observed raw row before sending a versioned UDP packet. Unity processes every accepted sequence once and runs only the participant's selected Raw, Moving Average, EMA, Butterworth, or Median condition. Raw corner loads and raw CoP are always recorded alongside the selected live result; inactive filtered-result columns are explicitly `NaN`. The Y settings window selects both the input source and filter and reports live/stale state.
+**Decision:** Use the official Recorder's documented 12-column output as the bridge input. Under the confirmed standard board orientation, map Recorder `TL`/`TR` to front-left/front-right and `BL`/`BR` to rear-left/rear-right. The Python bridge preserves each observed raw row before sending a versioned UDP packet. Unity processes every accepted sequence once and runs only the participant's selected causal filter condition. Raw corner loads and raw CoP are always recorded alongside the selected live result; inactive filtered-result columns are explicitly `NaN`. The Y settings window selects both the input source and filter and reports live/stale state.
 
 **Reason:** One acquisition stream plus raw preservation allows identical data to be replayed later, while each participant uses only the assigned live filter condition. Source and receive timestamps plus raw corner loads preserve auditability. Keeping input and filter selection outside gameplay prevents it from depending directly on Recorder, Bluetooth, UDP, or filter implementations.
 
@@ -323,6 +323,18 @@ This file records approved architectural and experimental decisions. Add a dated
 **Reason:** A fixed wide range made the pointer too slow and could encourage excessive leaning. Participant-specific comfortable limits make the full target area reachable without coupling calibration to the selected experimental filter.
 
 **Consequences:** Calibration uses valid raw CoP while gameplay continues to use the assigned causal filter. Operators must recalibrate each participant before their measured rounds. Range safety, sign orientation, repeatability, and calibration persistence remain hardware-dependent and must be validated with the physical board.
+
+## D032: Additional responsive causal filter conditions
+
+**Date:** 2026-11-04
+
+**Status:** Accepted
+
+**Decision:** Add Adaptive Low-pass and Alpha-Beta Predictive as selectable live conditions alongside Raw, Moving Average, EMA, Butterworth, and Median. The adaptive condition changes cutoff causally from the filtered CoP derivative; the alpha-beta condition predicts position from a causal velocity estimate. Only the selected condition drives the pointer, while its output receives dedicated trial-log columns and raw acquisition data remains unchanged.
+
+**Reason:** Pilot feedback found the existing EMA condition noticeably delayed. These alternatives investigate stable quiet-stance control with faster lean response without moving filtering into gameplay or acquisition code.
+
+**Consequences:** Both conditions are non-linear or model-based and cannot be compared solely through a conventional Bode plot. Initial parameters are provisional; measured jitter, delay, settling, overshoot, and physical-board playability must be evaluated before locking the experimental protocol. Filter selection and parameters remain fixed during each measured trial.
 
 ## Decision template
 

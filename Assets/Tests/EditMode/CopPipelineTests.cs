@@ -47,10 +47,11 @@ namespace BalloonBalance.Tests.EditMode
         }
 
         [Test]
-        public void CausalFiltersConvergeWithoutOvershoot()
+        public void CausalFiltersConvergeToConstantInput()
         {
             ICopFilter[] filters = { new EmaCopFilter(2f), new MovingAverageCopFilter(5),
-                new ButterworthCopFilter(2f, 50f), new MedianCopFilter(3) };
+                new ButterworthCopFilter(2f, 50f), new MedianCopFilter(3),
+                new AdaptiveLowPassCopFilter(1.5f, 3f), new AlphaBetaCopFilter(0.85f, 0.05f) };
             foreach (ICopFilter filter in filters)
             {
                 filter.Reset();
@@ -59,6 +60,27 @@ namespace BalloonBalance.Tests.EditMode
                 Assert.That(output.x, Is.EqualTo(1f).Within(0.02f), filter.Name);
                 Assert.That(output.y, Is.EqualTo(1f).Within(0.02f), filter.Name);
             }
+        }
+
+        [Test]
+        public void AdaptiveFilterRespondsFasterWhileInputIsMoving()
+        {
+            AdaptiveLowPassCopFilter filter = new AdaptiveLowPassCopFilter(1f, 4f);
+            filter.Process(Vector2.zero, 0.05f);
+            Vector2 first = filter.Process(Vector2.one, 0.05f);
+            Assert.That(first.x, Is.GreaterThan(0.3f));
+            Assert.That(first.x, Is.LessThan(1f));
+        }
+
+        [Test]
+        public void AlphaBetaFilterConvergesAfterAStep()
+        {
+            AlphaBetaCopFilter filter = new AlphaBetaCopFilter(0.85f, 0.05f);
+            filter.Process(Vector2.zero, 0.05f);
+            Vector2 output = Vector2.zero;
+            for (int index = 0; index < 100; index++) output = filter.Process(Vector2.one, 0.05f);
+            Assert.That(output.x, Is.EqualTo(1f).Within(0.02f));
+            Assert.That(output.y, Is.EqualTo(1f).Within(0.02f));
         }
 
 

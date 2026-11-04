@@ -33,7 +33,7 @@ namespace BalloonBalance.Logging
             inProgressPath = Path.Combine(directory, baseName + ".samples.csv.inprogress");
             SavedPath = Path.Combine(directory, baseName + ".samples.csv");
             writer = new StreamWriter(inProgressPath, false, new UTF8Encoding(false));
-            writer.WriteLine("sequence,source_seconds,receive_seconds,source,validity,connection,front_left,front_right,rear_left,rear_right,total_load,raw_x,raw_y,moving_average_x,moving_average_y,ema_x,ema_y,butterworth_x,butterworth_y,median_x,median_y,control_x,control_y,active_filter,sequence_mode,delta_seconds");
+            writer.WriteLine("sequence,source_seconds,receive_seconds,source,validity,connection,front_left,front_right,rear_left,rear_right,total_load,raw_x,raw_y,moving_average_x,moving_average_y,ema_x,ema_y,butterworth_x,butterworth_y,median_x,median_y,adaptive_low_pass_x,adaptive_low_pass_y,alpha_beta_x,alpha_beta_y,control_x,control_y,active_filter,sequence_mode,delta_seconds");
             SampleCount = 0;
         }
 
@@ -50,7 +50,10 @@ namespace BalloonBalance.Logging
                 F(sample.FrontLeft), F(sample.FrontRight), F(sample.RearLeft), F(sample.RearRight), F(sample.TotalLoad),
                 F(processed.Raw.x), F(processed.Raw.y), F(processed.MovingAverage.x), F(processed.MovingAverage.y),
                 F(processed.Ema.x), F(processed.Ema.y), F(processed.Butterworth.x), F(processed.Butterworth.y),
-                F(processed.Median.x), F(processed.Median.y), F(processed.Control.x), F(processed.Control.y),
+                F(processed.Median.x), F(processed.Median.y),
+                F(processed.AdaptiveLowPass.x), F(processed.AdaptiveLowPass.y),
+                F(processed.AlphaBeta.x), F(processed.AlphaBeta.y),
+                F(processed.Control.x), F(processed.Control.y),
                 inputManager.ActiveFilter, activeSequenceMode, F(processed.DeltaTime)));
             SampleCount++;
             if (SampleCount % 50 == 0) writer.Flush();

@@ -145,6 +145,8 @@ Acceptance: identical CSV input can be replayed through every condition with tra
 
 Progress note (2026-11-01): added a fifth causal three-sample median condition while preserving raw corner loads and raw CoP alongside the single selected control-filter output. The Y settings window now selects Fixed Matched Sequences or Random Sequence before a round. Fixed mode cycles four hidden reproducible seeds in a stable order across participants. Board-friendly pacing increases spawn intervals, lowers approach speeds, and limits consecutive target jumps. C# runtime and PlayMode assemblies compile with zero errors; physical-board responsiveness and the new settings layout still require in-Editor/hardware validation.
 
+Progress note (2026-11-04): added Adaptive Low-pass and Alpha-Beta Predictive as sixth and seventh causal control conditions. Their selected output is logged in dedicated sample columns while raw loads and raw CoP remain preserved. Replaced the malformed serialized legacy Dropdown popup hierarchy with runtime-built, masked popup templates and enlarged the settings panel so all options remain readable and selectable by mouse. Mathematical and UI regression tests cover convergence, adaptive response, seven-option selection, visible popup labels, popup height, and new log columns. Final parameter selection and physical-board feel remain pilot/hardware-dependent.
+
 ## UDP and board bridge
 
 - [x] Freeze version 1 packet schema.

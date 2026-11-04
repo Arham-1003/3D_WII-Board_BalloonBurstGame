@@ -110,6 +110,16 @@ Treat theoretical filter phase/group delay, transport/processing latency, and ob
 
 A short odd-length median filter can suppress isolated spikes. Keep the window small and measure its effect on transition timing. Treat it as an optional prefilter, not an automatic default.
 
+### Adaptive low-pass
+
+Use a causal speed-sensitive low-pass condition based on the One Euro principle. Smooth strongly near quiet stance and raise the cutoff independently on each axis as the filtered CoP derivative increases. Record the minimum cutoff, speed coefficient, derivative cutoff, and timestamp-derived sample interval. This is a non-linear condition, so evaluate it from measured jitter, response delay, and settling behaviour rather than describing it with one fixed frequency response.
+
+### Alpha-beta predictive filter
+
+Maintain causal position and velocity estimates. Predict the next position from the source timestamp interval, then correct position and velocity using fixed alpha and beta gains. Clamp implausible time intervals and reset both estimates between trials. Record both gains and assess overshoot when a participant stops or reverses direction.
+
+The initial adaptive and alpha-beta parameters are provisional gameplay defaults. They must remain unchanged within a measured trial and must be finalized from pilot recordings before filter comparisons begin.
+
 ## Filter state
 
 Reset every filter:

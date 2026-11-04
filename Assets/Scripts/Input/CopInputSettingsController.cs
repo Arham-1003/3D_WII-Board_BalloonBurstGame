@@ -33,7 +33,8 @@ namespace BalloonBalance.Input
             filterDropdown.ClearOptions();
             filterDropdown.AddOptions(new System.Collections.Generic.List<string>
             {
-                "Raw / No Filter", "Moving Average", "EMA", "Butterworth Low-pass", "Median Spike Filter"
+                "Raw / No Filter", "Moving Average", "EMA", "Butterworth Low-pass", "Median Spike Filter",
+                "Adaptive Low-pass", "Alpha-Beta Predictive"
             });
             filterDropdown.SetValueWithoutNotify((int)inputManager.ActiveFilter);
             filterDropdown.onValueChanged.AddListener(inputManager.SelectFilter);
@@ -45,6 +46,9 @@ namespace BalloonBalance.Input
             });
             sequenceDropdown.SetValueWithoutNotify((int)gameManager.ActiveSequenceMode);
             sequenceDropdown.onValueChanged.AddListener(gameManager.SelectSequenceMode);
+            SetDropdownListHeight(sourceDropdown);
+            SetDropdownListHeight(filterDropdown);
+            SetDropdownListHeight(sequenceDropdown);
         }
 
         private void Update()
@@ -173,13 +177,13 @@ namespace BalloonBalance.Input
         private void ApplyElegantLayout()
         {
             RectTransform panel = transform as RectTransform;
-            panel.sizeDelta = new Vector2(820f, 720f);
+            panel.sizeDelta = new Vector2(920f, 760f);
             Image panelImage = GetComponent<Image>();
             panelImage.color = new Color(0.018f, 0.065f, 0.11f, 0.985f);
 
-            StyleText("Settings Title", new Vector2(0f, -40f), new Vector2(740f, 52f), 34,
+            StyleText("Settings Title", new Vector2(0f, -40f), new Vector2(840f, 52f), 34,
                 new Color(0.2f, 0.9f, 1f), TextAnchor.MiddleCenter);
-            StyleText("Settings Help", new Vector2(0f, -102f), new Vector2(700f, 68f), 18,
+            StyleText("Settings Help", new Vector2(0f, -102f), new Vector2(800f, 68f), 18,
                 new Color(0.78f, 0.88f, 0.94f), TextAnchor.UpperLeft);
 
             CreateRowBackground("Input Row Background", -188f);
@@ -188,9 +192,9 @@ namespace BalloonBalance.Input
             StyleLabel("Input Source Label", "INPUT SOURCE", -188f);
             StyleLabel("Filter Selection Label", "MOVEMENT FILTER", -248f);
             StyleLabel("Round Sequence Label", "ROUND SEQUENCE", -308f);
-            StyleDropdown(sourceDropdown, new Vector2(115f, -188f));
-            StyleDropdown(filterDropdown, new Vector2(115f, -248f));
-            StyleDropdown(sequenceDropdown, new Vector2(115f, -308f));
+            StyleDropdown(sourceDropdown, new Vector2(135f, -188f));
+            StyleDropdown(filterDropdown, new Vector2(135f, -248f));
+            StyleDropdown(sequenceDropdown, new Vector2(135f, -308f));
 
             StyleText("Connection Status", new Vector2(0f, -358f), new Vector2(720f, 34f), 16,
                 Color.white, TextAnchor.MiddleCenter);
@@ -240,7 +244,7 @@ namespace BalloonBalance.Input
             rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 1f);
             rect.pivot = new Vector2(0.5f, 0.5f);
             rect.anchoredPosition = new Vector2(0f, y);
-            rect.sizeDelta = new Vector2(740f, 52f);
+            rect.sizeDelta = new Vector2(840f, 52f);
             row.GetComponent<Image>().color = new Color(0.035f, 0.13f, 0.21f, 0.96f);
             row.transform.SetAsFirstSibling();
         }
@@ -254,15 +258,16 @@ namespace BalloonBalance.Input
             text.fontSize = 17;
             text.color = new Color(0.55f, 0.9f, 1f);
             text.alignment = TextAnchor.MiddleLeft;
-            text.rectTransform.anchoredPosition = new Vector2(-345f, y);
-            text.rectTransform.sizeDelta = new Vector2(250f, 42f);
+            text.rectTransform.anchoredPosition = new Vector2(-315f, y);
+            text.rectTransform.sizeDelta = new Vector2(210f, 42f);
         }
 
         private static void StyleDropdown(Dropdown dropdown, Vector2 position)
         {
+            RebuildDropdownTemplate(dropdown);
             RectTransform rect = dropdown.GetComponent<RectTransform>();
             rect.anchoredPosition = position;
-            rect.sizeDelta = new Vector2(440f, 42f);
+            rect.sizeDelta = new Vector2(530f, 42f);
             dropdown.GetComponent<Image>().color = new Color(0.025f, 0.22f, 0.34f, 1f);
             if (dropdown.captionText != null)
             {
@@ -274,52 +279,106 @@ namespace BalloonBalance.Input
                 dropdown.itemText.fontSize = 17;
                 dropdown.itemText.color = Color.white;
             }
-            if (dropdown.template != null)
-            {
-                dropdown.template.anchorMin = new Vector2(0f, 0f);
-                dropdown.template.anchorMax = new Vector2(1f, 0f);
-                dropdown.template.pivot = new Vector2(0.5f, 1f);
-                dropdown.template.anchoredPosition = new Vector2(0f, -4f);
-                dropdown.template.sizeDelta = new Vector2(0f, 190f);
-                Image templateImage = dropdown.template.GetComponent<Image>();
-                if (templateImage != null) templateImage.color = new Color(0.018f, 0.1f, 0.17f, 1f);
-
-                ScrollRect scroll = dropdown.template.GetComponent<ScrollRect>();
-                RectTransform content = scroll != null ? scroll.content : null;
-                if (content != null)
-                {
-                    content.anchorMin = new Vector2(0f, 1f);
-                    content.anchorMax = new Vector2(1f, 1f);
-                    content.pivot = new Vector2(0.5f, 1f);
-                    content.anchoredPosition = Vector2.zero;
-                    content.sizeDelta = new Vector2(0f, 38f);
-                }
-
-                Toggle item = dropdown.itemText != null ? dropdown.itemText.GetComponentInParent<Toggle>() : null;
-                if (item != null)
-                {
-                    RectTransform itemRect = item.GetComponent<RectTransform>();
-                    itemRect.anchorMin = new Vector2(0f, 0.5f);
-                    itemRect.anchorMax = new Vector2(1f, 0.5f);
-                    itemRect.pivot = new Vector2(0.5f, 0.5f);
-                    itemRect.anchoredPosition = Vector2.zero;
-                    itemRect.sizeDelta = new Vector2(0f, 38f);
-                    Image itemImage = item.GetComponent<Image>();
-                    if (itemImage == null) itemImage = item.gameObject.AddComponent<Image>();
-                    itemImage.color = new Color(0.03f, 0.16f, 0.25f, 1f);
-                    item.targetGraphic = itemImage;
-                    ColorBlock itemColors = item.colors;
-                    itemColors.normalColor = Color.white;
-                    itemColors.highlightedColor = new Color(0.35f, 0.75f, 0.95f);
-                    itemColors.selectedColor = new Color(0.12f, 0.55f, 0.78f);
-                    item.colors = itemColors;
-                }
-            }
             ColorBlock colors = dropdown.colors;
             colors.normalColor = Color.white;
             colors.highlightedColor = new Color(0.65f, 0.92f, 1f);
             colors.pressedColor = new Color(0.35f, 0.75f, 0.95f);
             dropdown.colors = colors;
+        }
+
+        private static void RebuildDropdownTemplate(Dropdown dropdown)
+        {
+            RectTransform oldTemplate = dropdown.template;
+            if (oldTemplate != null)
+            {
+                oldTemplate.gameObject.SetActive(false);
+                oldTemplate.name = "Legacy Template (Replaced)";
+            }
+
+            GameObject templateObject = new GameObject("Template", typeof(RectTransform),
+                typeof(CanvasRenderer), typeof(Image), typeof(ScrollRect));
+            templateObject.transform.SetParent(dropdown.transform, false);
+            RectTransform template = templateObject.GetComponent<RectTransform>();
+            template.anchorMin = new Vector2(0f, 0f);
+            template.anchorMax = new Vector2(1f, 0f);
+            template.pivot = new Vector2(0.5f, 1f);
+            template.anchoredPosition = new Vector2(0f, -4f);
+            template.sizeDelta = new Vector2(0f, 190f);
+            templateObject.GetComponent<Image>().color = new Color(0.018f, 0.1f, 0.17f, 1f);
+
+            GameObject viewportObject = new GameObject("Viewport", typeof(RectTransform),
+                typeof(CanvasRenderer), typeof(Image), typeof(Mask));
+            viewportObject.transform.SetParent(template, false);
+            RectTransform viewport = viewportObject.GetComponent<RectTransform>();
+            viewport.anchorMin = Vector2.zero;
+            viewport.anchorMax = Vector2.one;
+            viewport.offsetMin = new Vector2(2f, 2f);
+            viewport.offsetMax = new Vector2(-2f, -2f);
+            Image viewportImage = viewportObject.GetComponent<Image>();
+            viewportImage.color = Color.white;
+            viewportObject.GetComponent<Mask>().showMaskGraphic = false;
+
+            GameObject contentObject = new GameObject("Content", typeof(RectTransform));
+            contentObject.transform.SetParent(viewport, false);
+            RectTransform content = contentObject.GetComponent<RectTransform>();
+            content.anchorMin = new Vector2(0f, 1f);
+            content.anchorMax = new Vector2(1f, 1f);
+            content.pivot = new Vector2(0.5f, 1f);
+            content.anchoredPosition = Vector2.zero;
+            content.sizeDelta = new Vector2(0f, 38f);
+
+            GameObject itemObject = new GameObject("Item", typeof(RectTransform),
+                typeof(CanvasRenderer), typeof(Image), typeof(Toggle));
+            itemObject.transform.SetParent(content, false);
+            RectTransform item = itemObject.GetComponent<RectTransform>();
+            item.anchorMin = new Vector2(0f, 0.5f);
+            item.anchorMax = new Vector2(1f, 0.5f);
+            item.pivot = new Vector2(0.5f, 0.5f);
+            item.anchoredPosition = Vector2.zero;
+            item.sizeDelta = new Vector2(0f, 38f);
+            Image itemImage = itemObject.GetComponent<Image>();
+            itemImage.color = new Color(0.03f, 0.16f, 0.25f, 1f);
+            Toggle itemToggle = itemObject.GetComponent<Toggle>();
+            itemToggle.targetGraphic = itemImage;
+            ColorBlock itemColors = itemToggle.colors;
+            itemColors.normalColor = Color.white;
+            itemColors.highlightedColor = new Color(0.35f, 0.75f, 0.95f);
+            itemColors.selectedColor = new Color(0.12f, 0.55f, 0.78f);
+            itemToggle.colors = itemColors;
+
+            GameObject labelObject = new GameObject("Item Label", typeof(RectTransform),
+                typeof(CanvasRenderer), typeof(Text));
+            labelObject.transform.SetParent(item, false);
+            Text itemLabel = labelObject.GetComponent<Text>();
+            itemLabel.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            itemLabel.fontSize = 17;
+            itemLabel.color = Color.white;
+            itemLabel.alignment = TextAnchor.MiddleLeft;
+            RectTransform labelRect = labelObject.GetComponent<RectTransform>();
+            labelRect.anchorMin = Vector2.zero;
+            labelRect.anchorMax = Vector2.one;
+            labelRect.offsetMin = new Vector2(16f, 0f);
+            labelRect.offsetMax = new Vector2(-16f, 0f);
+
+            ScrollRect scroll = templateObject.GetComponent<ScrollRect>();
+            scroll.content = content;
+            scroll.viewport = viewport;
+            scroll.horizontal = false;
+            scroll.vertical = true;
+            scroll.movementType = ScrollRect.MovementType.Clamped;
+            scroll.inertia = false;
+            dropdown.template = template;
+            dropdown.itemText = itemLabel;
+            templateObject.SetActive(false);
+        }
+
+        private static void SetDropdownListHeight(Dropdown dropdown)
+        {
+            if (dropdown == null || dropdown.template == null) return;
+            const float itemHeight = 40f;
+            const float padding = 8f;
+            float visibleItems = Mathf.Min(dropdown.options.Count, 7);
+            dropdown.template.sizeDelta = new Vector2(0f, visibleItems * itemHeight + padding);
         }
 
         private void StyleText(string childName, Vector2 position, Vector2 size, int fontSize,

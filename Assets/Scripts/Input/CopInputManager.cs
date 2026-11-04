@@ -8,7 +8,7 @@ namespace BalloonBalance.Input
 {
     public sealed class CopInputManager : MonoBehaviour
     {
-        public enum FilterSelection { Raw, MovingAverage, Ema, Butterworth, Median }
+        public enum FilterSelection { Raw, MovingAverage, Ema, Butterworth, Median, AdaptiveLowPass, AlphaBeta }
         public enum CalibrationStep { Idle, Neutral, Left, Right, Forward, Backward, Complete }
 
         [Header("Sources")]
@@ -23,10 +23,14 @@ namespace BalloonBalance.Input
         [SerializeField, Min(2f)] private float nominalSampleRateHz = 50f;
         [SerializeField, Range(1, 30)] private int movingAverageWindow = 5;
         [SerializeField, Range(1, 9)] private int medianWindow = 3;
+        [SerializeField, Min(0.1f)] private float adaptiveMinimumCutoffHz = 1.5f;
+        [SerializeField, Min(0f)] private float adaptiveSpeedCoefficient = 3f;
+        [SerializeField, Range(0.01f, 1f)] private float alphaBetaAlpha = 0.85f;
+        [SerializeField, Range(0f, 1f)] private float alphaBetaBeta = 0.05f;
         [SerializeField] private CalibrationProfile calibration = new CalibrationProfile();
 
         private ICopInputSource inputSource;
-        private readonly ICopFilter[] filters = new ICopFilter[5];
+        private readonly ICopFilter[] filters = new ICopFilter[7];
         private double previousSourceTime;
         private long lastProcessedSequence = long.MinValue;
 
@@ -39,6 +43,8 @@ namespace BalloonBalance.Input
         public Vector2 EmaOutput { get; private set; }
         public Vector2 ButterworthOutput { get; private set; }
         public Vector2 MedianOutput { get; private set; }
+        public Vector2 AdaptiveLowPassOutput { get; private set; }
+        public Vector2 AlphaBetaOutput { get; private set; }
         public CopInputMode InputMode => inputMode;
         public FilterSelection ActiveFilter => filterSelection;
         public string ConnectionStatus => inputSource == null ? "NOT CONFIGURED" : inputSource.IsConnected ? "CONNECTED" : "WAITING / STALE";
@@ -81,7 +87,7 @@ namespace BalloonBalance.Input
 
         public void SelectInput(int mode) => SelectInput((CopInputMode)Mathf.Clamp(mode, 0, 3));
 
-        public void SelectFilter(int filter) => SelectFilter((FilterSelection)Mathf.Clamp(filter, 0, 4));
+        public void SelectFilter(int filter) => SelectFilter((FilterSelection)Mathf.Clamp(filter, 0, 6));
 
         public void SelectFilter(FilterSelection filter)
         {
@@ -172,7 +178,8 @@ namespace BalloonBalance.Input
             {
                 LatestSample = sample;
                 SampleProcessed?.Invoke(new ProcessedCopSample(sample, RawOutput, MovingAverageOutput,
-                    EmaOutput, ButterworthOutput, MedianOutput, ControlPosition, 0f));
+                    EmaOutput, ButterworthOutput, MedianOutput, AdaptiveLowPassOutput,
+                    AlphaBetaOutput, ControlPosition, 0f));
                 return false;
             }
             float deltaTime = previousSourceTime > 0d
@@ -182,13 +189,15 @@ namespace BalloonBalance.Input
 
             if (sample.SourceType == CopSourceType.Keyboard)
             {
-                RawOutput = MovingAverageOutput = EmaOutput = ButterworthOutput = MedianOutput = sample.FilteredCop;
+                RawOutput = MovingAverageOutput = EmaOutput = ButterworthOutput = MedianOutput =
+                    AdaptiveLowPassOutput = AlphaBetaOutput = sample.FilteredCop;
                 ControlPosition = Vector2.ClampMagnitude(sample.FilteredCop, 1f);
             }
             else
             {
                 RawOutput = sample.RawCop;
                 MovingAverageOutput = EmaOutput = ButterworthOutput = MedianOutput =
+                    AdaptiveLowPassOutput = AlphaBetaOutput =
                     new Vector2(float.NaN, float.NaN);
                 Vector2 selected = filters[(int)filterSelection].Process(sample.RawCop, deltaTime);
                 switch (filterSelection)
@@ -197,6 +206,8 @@ namespace BalloonBalance.Input
                     case FilterSelection.Ema: EmaOutput = selected; break;
                     case FilterSelection.Butterworth: ButterworthOutput = selected; break;
                     case FilterSelection.Median: MedianOutput = selected; break;
+                    case FilterSelection.AdaptiveLowPass: AdaptiveLowPassOutput = selected; break;
+                    case FilterSelection.AlphaBeta: AlphaBetaOutput = selected; break;
                     default: RawOutput = selected; break;
                 }
                 ControlPosition = CopMapper.Map(selected, calibration);
@@ -204,7 +215,8 @@ namespace BalloonBalance.Input
 
             LatestSample = sample;
             SampleProcessed?.Invoke(new ProcessedCopSample(sample, RawOutput, MovingAverageOutput,
-                EmaOutput, ButterworthOutput, MedianOutput, ControlPosition, deltaTime));
+                EmaOutput, ButterworthOutput, MedianOutput, AdaptiveLowPassOutput,
+                AlphaBetaOutput, ControlPosition, deltaTime));
             return true;
         }
 
@@ -215,6 +227,8 @@ namespace BalloonBalance.Input
             filters[2] = new EmaCopFilter(cutoffHz);
             filters[3] = new ButterworthCopFilter(cutoffHz, nominalSampleRateHz);
             filters[4] = new MedianCopFilter(medianWindow);
+            filters[5] = new AdaptiveLowPassCopFilter(adaptiveMinimumCutoffHz, adaptiveSpeedCoefficient);
+            filters[6] = new AlphaBetaCopFilter(alphaBetaAlpha, alphaBetaBeta);
         }
 
         private MonoBehaviour SourceFor(CopInputMode mode) => mode switch
@@ -234,10 +248,12 @@ namespace BalloonBalance.Input
     public readonly struct ProcessedCopSample
     {
         public ProcessedCopSample(CopSample source, Vector2 raw, Vector2 movingAverage, Vector2 ema,
-            Vector2 butterworth, Vector2 median, Vector2 control, float deltaTime)
+            Vector2 butterworth, Vector2 median, Vector2 adaptiveLowPass, Vector2 alphaBeta,
+            Vector2 control, float deltaTime)
         {
             Source = source; Raw = raw; MovingAverage = movingAverage; Ema = ema;
             Butterworth = butterworth; Median = median; Control = control; DeltaTime = deltaTime;
+            AdaptiveLowPass = adaptiveLowPass; AlphaBeta = alphaBeta;
         }
         public CopSample Source { get; }
         public Vector2 Raw { get; }
@@ -245,6 +261,8 @@ namespace BalloonBalance.Input
         public Vector2 Ema { get; }
         public Vector2 Butterworth { get; }
         public Vector2 Median { get; }
+        public Vector2 AdaptiveLowPass { get; }
+        public Vector2 AlphaBeta { get; }
         public Vector2 Control { get; }
         public float DeltaTime { get; }
     }

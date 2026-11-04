@@ -111,4 +111,96 @@ namespace BalloonBalance.SignalProcessing
             return output;
         }
     }
+
+    public sealed class AdaptiveLowPassCopFilter : ICopFilter
+    {
+        private readonly float minimumCutoffHz;
+        private readonly float speedCoefficient;
+        private readonly float derivativeCutoffHz;
+        private Vector2 state;
+        private Vector2 previousInput;
+        private Vector2 filteredDerivative;
+        private bool initialized;
+        public string Name => "AdaptiveLowPass";
+
+        public AdaptiveLowPassCopFilter(float minimumCutoffHz, float speedCoefficient,
+            float derivativeCutoffHz = 1f)
+        {
+            this.minimumCutoffHz = Mathf.Max(0.01f, minimumCutoffHz);
+            this.speedCoefficient = Mathf.Max(0f, speedCoefficient);
+            this.derivativeCutoffHz = Mathf.Max(0.01f, derivativeCutoffHz);
+        }
+
+        public void Reset()
+        {
+            state = previousInput = filteredDerivative = Vector2.zero;
+            initialized = false;
+        }
+
+        public Vector2 Process(Vector2 rawCop, float deltaTime)
+        {
+            float dt = Mathf.Max(0.0001f, deltaTime);
+            if (!initialized)
+            {
+                initialized = true;
+                state = previousInput = rawCop;
+                filteredDerivative = Vector2.zero;
+                return state;
+            }
+
+            Vector2 derivative = (rawCop - previousInput) / dt;
+            previousInput = rawCop;
+            float derivativeAlpha = Alpha(derivativeCutoffHz, dt);
+            filteredDerivative += derivativeAlpha * (derivative - filteredDerivative);
+
+            float cutoffX = minimumCutoffHz + speedCoefficient * Mathf.Abs(filteredDerivative.x);
+            float cutoffY = minimumCutoffHz + speedCoefficient * Mathf.Abs(filteredDerivative.y);
+            state.x += Alpha(cutoffX, dt) * (rawCop.x - state.x);
+            state.y += Alpha(cutoffY, dt) * (rawCop.y - state.y);
+            return state;
+        }
+
+        private static float Alpha(float cutoffHz, float deltaTime) =>
+            1f - Mathf.Exp(-2f * Mathf.PI * cutoffHz * deltaTime);
+    }
+
+    public sealed class AlphaBetaCopFilter : ICopFilter
+    {
+        private readonly float alpha;
+        private readonly float beta;
+        private Vector2 position;
+        private Vector2 velocity;
+        private bool initialized;
+        public string Name => "AlphaBeta";
+
+        public AlphaBetaCopFilter(float alpha, float beta)
+        {
+            this.alpha = Mathf.Clamp01(alpha);
+            this.beta = Mathf.Clamp(beta, 0f, 1f);
+        }
+
+        public void Reset()
+        {
+            position = velocity = Vector2.zero;
+            initialized = false;
+        }
+
+        public Vector2 Process(Vector2 rawCop, float deltaTime)
+        {
+            float dt = Mathf.Clamp(deltaTime, 0.001f, 0.25f);
+            if (!initialized)
+            {
+                initialized = true;
+                position = rawCop;
+                velocity = Vector2.zero;
+                return position;
+            }
+
+            Vector2 predicted = position + velocity * dt;
+            Vector2 residual = rawCop - predicted;
+            position = predicted + alpha * residual;
+            velocity += (beta / dt) * residual;
+            return position;
+        }
+    }
 }

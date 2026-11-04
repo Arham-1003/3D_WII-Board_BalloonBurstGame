@@ -121,6 +121,14 @@ namespace BalloonBalance.Tests.PlayMode
             selector.value = (int)CopInputMode.SyntheticBoard;
             selector.onValueChanged.Invoke(selector.value);
             Assert.That(input.InputMode, Is.EqualTo(CopInputMode.SyntheticBoard));
+            yield return new WaitForSecondsRealtime(0.06f);
+            Assert.That(input.HasValidSample, Is.True);
+            Assert.That(input.CaptureCalibrationPoint(), Is.True);
+            Assert.That(input.CurrentCalibrationStep, Is.EqualTo(CopInputManager.CalibrationStep.Neutral));
+            Assert.That(input.CaptureCalibrationPoint(), Is.True,
+                "Centre capture must accept the connected source's latest valid sample immediately after reset.");
+            Assert.That(input.CurrentCalibrationStep, Is.EqualTo(CopInputManager.CalibrationStep.Left));
+            StringAssert.Contains("Centre captured", input.CalibrationFeedback);
             Dropdown filter = Object.FindObjectsByType<Dropdown>(FindObjectsInactive.Include, FindObjectsSortMode.None)
                 .First(dropdown => dropdown.name == "Filter Selection Dropdown");
             Assert.That(filter.options.Count, Is.EqualTo(7));

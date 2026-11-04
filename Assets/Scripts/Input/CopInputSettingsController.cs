@@ -56,7 +56,9 @@ namespace BalloonBalance.Input
             filterDropdown.interactable = !gameManager.IsPlaying;
             sequenceDropdown.interactable = !gameManager.IsPlaying;
             calibrationButton.interactable = !gameManager.IsPlaying && inputManager.InputMode != CopInputMode.Keyboard;
-            calibrationStatus.text = inputManager.CalibrationInstruction;
+            calibrationStatus.text = string.IsNullOrEmpty(inputManager.CalibrationFeedback)
+                ? inputManager.CalibrationInstruction
+                : $"{inputManager.CalibrationFeedback}  {inputManager.CalibrationInstruction}";
             Text calibrationLabel = calibrationButton.GetComponentInChildren<Text>();
             if (calibrationLabel != null) calibrationLabel.text = CalibrationButtonText();
             connectionText.text = $"INPUT: {inputManager.InputMode}   |   FILTER: {inputManager.ActiveFilter}   |   ROUND: {gameManager.ActiveSequenceMode}   |   {inputManager.ConnectionStatus}";

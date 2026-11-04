@@ -49,6 +49,7 @@ namespace BalloonBalance.Input
         public FilterSelection ActiveFilter => filterSelection;
         public string ConnectionStatus => inputSource == null ? "NOT CONFIGURED" : inputSource.IsConnected ? "CONNECTED" : "WAITING / STALE";
         public CalibrationStep CurrentCalibrationStep { get; private set; }
+        public string CalibrationFeedback { get; private set; }
         public string CalibrationInstruction => CurrentCalibrationStep switch
         {
             CalibrationStep.Neutral => "Stand naturally in the centre, then press CAPTURE CENTRE.",
@@ -99,6 +100,7 @@ namespace BalloonBalance.Input
         public void BeginCalibration()
         {
             CurrentCalibrationStep = CalibrationStep.Neutral;
+            CalibrationFeedback = "Calibration started. Hold each position steady before capturing.";
             ResetProcessing();
         }
 
@@ -109,40 +111,75 @@ namespace BalloonBalance.Input
                 BeginCalibration();
                 return true;
             }
-            if (!HasValidSample || !IsFinite(LatestSample.RawCop)) return false;
+            if (!TryGetCalibrationSample(out CopSample calibrationSample))
+            {
+                CalibrationFeedback = inputSource == null || !inputSource.IsConnected
+                    ? "Cannot capture: the selected input is not connected or its packets are stale."
+                    : "Cannot capture: waiting for a valid load sample. Stand fully on the board and try again.";
+                return false;
+            }
 
-            Vector2 raw = LatestSample.RawCop;
+            Vector2 raw = calibrationSample.RawCop;
             const float minimumComfortableRange = 0.02f;
             switch (CurrentCalibrationStep)
             {
                 case CalibrationStep.Neutral:
                     calibration.neutral = raw;
                     CurrentCalibrationStep = CalibrationStep.Left;
+                    CalibrationFeedback = "Centre captured.";
                     break;
                 case CalibrationStep.Left:
-                    if (calibration.neutral.x - raw.x < minimumComfortableRange) return false;
+                    if (calibration.neutral.x - raw.x < minimumComfortableRange)
+                    {
+                        CalibrationFeedback = "Not captured: lean farther left and hold steady.";
+                        return false;
+                    }
                     calibration.leftRange = calibration.neutral.x - raw.x;
                     CurrentCalibrationStep = CalibrationStep.Right;
+                    CalibrationFeedback = "Left limit captured.";
                     break;
                 case CalibrationStep.Right:
-                    if (raw.x - calibration.neutral.x < minimumComfortableRange) return false;
+                    if (raw.x - calibration.neutral.x < minimumComfortableRange)
+                    {
+                        CalibrationFeedback = "Not captured: lean farther right and hold steady.";
+                        return false;
+                    }
                     calibration.rightRange = raw.x - calibration.neutral.x;
                     CurrentCalibrationStep = CalibrationStep.Forward;
+                    CalibrationFeedback = "Right limit captured.";
                     break;
                 case CalibrationStep.Forward:
-                    if (raw.y - calibration.neutral.y < minimumComfortableRange) return false;
+                    if (raw.y - calibration.neutral.y < minimumComfortableRange)
+                    {
+                        CalibrationFeedback = "Not captured: lean farther forward and hold steady.";
+                        return false;
+                    }
                     calibration.forwardRange = raw.y - calibration.neutral.y;
                     CurrentCalibrationStep = CalibrationStep.Backward;
+                    CalibrationFeedback = "Forward limit captured.";
                     break;
                 case CalibrationStep.Backward:
-                    if (calibration.neutral.y - raw.y < minimumComfortableRange) return false;
+                    if (calibration.neutral.y - raw.y < minimumComfortableRange)
+                    {
+                        CalibrationFeedback = "Not captured: lean farther backward and hold steady.";
+                        return false;
+                    }
                     calibration.backwardRange = calibration.neutral.y - raw.y;
                     calibration.createdAtUtc = DateTime.UtcNow.ToString("O");
                     CurrentCalibrationStep = CalibrationStep.Complete;
+                    CalibrationFeedback = "Calibration complete and saved for this session.";
                     ResetProcessing();
                     break;
             }
             return true;
+        }
+
+        private bool TryGetCalibrationSample(out CopSample sample)
+        {
+            sample = LatestSample;
+            if (inputSource == null || !inputSource.IsConnected) return false;
+            if (sample.IsValid && IsFinite(sample.RawCop)) return true;
+            return inputSource.TryGetLatestSample(out sample) && sample.IsValid && IsFinite(sample.RawCop);
         }
 
         private static bool IsFinite(Vector2 value) =>
@@ -157,6 +194,7 @@ namespace BalloonBalance.Input
             SetSourceEnabled(csvSource, mode == CopInputMode.CsvPlayback);
             SetSourceEnabled(udpSource, mode == CopInputMode.LiveUdp);
             inputSource = SourceFor(mode) as ICopInputSource;
+            CalibrationFeedback = string.Empty;
             ResetProcessing();
             if (inputSource == null) Debug.LogError($"No valid {mode} input source is assigned.", this);
         }

@@ -130,6 +130,8 @@ Acceptance: two different users can safely reach the game bounds without changin
 
 Progress note (2026-11-01): added a guided five-point participant calibration to the paused Y settings menu. The operator captures centre, comfortable left/right, and comfortable forward/backward positions from valid raw CoP samples. These asymmetric limits immediately drive the common mapping pipeline while the selected causal filter remains the gameplay condition. Conservative 0.10 normalized fallback limits replace the previous overly wide defaults. Calibration quality and persistence still require physical-board validation before measured trials.
 
+Progress note (2026-11-04): fixed centre capture immediately after calibration reset by allowing calibration to consume the connected source's latest valid raw sample rather than relying only on the per-frame processed flag. The menu now reports stale/disconnected, invalid-load, and insufficient-lean failures instead of silently ignoring capture. Synthetic Play Mode coverage exercises the reset-then-capture path; physical-board calibration remains hardware-dependent.
+
 ## Filters
 
 - [x] Define `ICopFilter`.

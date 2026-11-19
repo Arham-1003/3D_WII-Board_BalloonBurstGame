@@ -236,3 +236,5 @@ Progress note (2026-11-01): integrated Keyboard, Synthetic Board, CSV Playback, 
 
 Progress note (2026-11-01): added a participant filter selector to the paused Y settings window. Raw, Moving Average, EMA, Butterworth, and Median are mutually exclusive live control conditions; switching resets filter history, and only the selected condition drives movement. Raw corner loads and raw CoP are always recorded, inactive filtered columns are written as `NaN`, and the active condition is recorded explicitly.
 
+Progress note (2026-11-04): live UDP calibration retains the newest fresh valid board sample so one transient invalid Recorder row cannot block centre capture. If all incoming rows are invalid, the settings panel reports the precise validity problem and the received total/four corner loads. Physical-board verification remains required.
+

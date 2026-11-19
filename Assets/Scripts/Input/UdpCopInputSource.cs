@@ -22,9 +22,12 @@ namespace BalloonBalance.Input
         private Thread receiveThread;
         private volatile bool running;
         private CopSample latest;
+        private CopSample latestValid;
         private bool hasSample;
+        private bool hasValidSample;
         private long lastSequence = -1;
         private double lastReceiveTime;
+        private double lastValidReceiveTime;
 
         public bool IsConnected => hasSample && Time.realtimeSinceStartupAsDouble - lastReceiveTime <= staleAfterSeconds;
         public int MalformedPacketCount { get; private set; }
@@ -36,7 +39,9 @@ namespace BalloonBalance.Input
         {
             lastSequence = -1;
             lastReceiveTime = 0d;
+            lastValidReceiveTime = 0d;
             hasSample = false;
+            hasValidSample = false;
             try
             {
                 client = new UdpClient(new IPEndPoint(IPAddress.Loopback, port));
@@ -58,8 +63,9 @@ namespace BalloonBalance.Input
 
         public bool TryGetLatestSample(out CopSample sample)
         {
-            sample = latest;
-            return IsConnected && latest.IsValid;
+            sample = latestValid;
+            return hasValidSample &&
+                   Time.realtimeSinceStartupAsDouble - lastValidReceiveTime <= staleAfterSeconds;
         }
 
         public bool TryDequeueSample(out CopSample sample) => samples.TryDequeue(out sample);
@@ -82,6 +88,12 @@ namespace BalloonBalance.Input
             latest = new CopSample(packet.sequence, packet.sourceTime, receiveTime, packet.frontLeft, packet.frontRight,
                 packet.rearLeft, packet.rearRight, total, cop, cop, CopSourceType.Udp, flags,
                 valid ? CopConnectionState.Connected : CopConnectionState.Faulted);
+            if (valid)
+            {
+                latestValid = latest;
+                lastValidReceiveTime = receiveTime;
+                hasValidSample = true;
+            }
             lastSequence = packet.sequence;
             lastReceiveTime = receiveTime;
             hasSample = true;
@@ -113,8 +125,10 @@ namespace BalloonBalance.Input
             while (packets.TryDequeue(out _)) { }
             while (samples.TryDequeue(out _)) { }
             hasSample = false;
+            hasValidSample = false;
             lastSequence = -1;
             lastReceiveTime = 0d;
+            lastValidReceiveTime = 0d;
         }
 
         [Serializable]

@@ -1,0 +1,22 @@
+{
+  "Median": {
+    "step_half_time_ms": 50.0,
+    "step_peak": 1.0,
+    "spike_peak": 0.0
+  },
+  "MovingAverage": {
+    "step_half_time_ms": 100.0,
+    "step_peak": 1.0,
+    "spike_peak": 0.2
+  },
+  "Butterworth": {
+    "step_half_time_ms": 250.0,
+    "step_peak": 1.0444469743008957,
+    "spike_peak": 0.1417727140691672
+  },
+  "AlphaBeta": {
+    "step_half_time_ms": 0.0,
+    "step_peak": 1.00885,
+    "spike_peak": 0.85
+  }
+}

@@ -115,7 +115,7 @@ namespace BalloonBalance.Input
             {
                 CalibrationFeedback = inputSource == null || !inputSource.IsConnected
                     ? "Cannot capture: the selected input is not connected or its packets are stale."
-                    : "Cannot capture: waiting for a valid load sample. Stand fully on the board and try again.";
+                    : DescribeInvalidCalibrationSample(LatestSample);
                 return false;
             }
 
@@ -185,6 +185,20 @@ namespace BalloonBalance.Input
         private static bool IsFinite(Vector2 value) =>
             !float.IsNaN(value.x) && !float.IsInfinity(value.x) &&
             !float.IsNaN(value.y) && !float.IsInfinity(value.y);
+
+        private static string DescribeInvalidCalibrationSample(CopSample sample)
+        {
+            string loads = $"total {sample.TotalLoad:F1} " +
+                           $"(FL {sample.FrontLeft:F1}, FR {sample.FrontRight:F1}, " +
+                           $"RL {sample.RearLeft:F1}, RR {sample.RearRight:F1})";
+            if ((sample.ValidityFlags & CopValidityFlags.LowTotalLoad) != 0)
+                return $"Cannot capture: board load is too low. Stand fully on the board. Received {loads}.";
+            if ((sample.ValidityFlags & CopValidityFlags.NegativeLoad) != 0)
+                return $"Cannot capture: a corner load is negative. Re-zero the empty board in Recorder, then stand on it. Received {loads}.";
+            if ((sample.ValidityFlags & CopValidityFlags.InvalidNumber) != 0)
+                return "Cannot capture: Recorder supplied an invalid number. Check its calibration and output file.";
+            return $"Cannot capture: no fresh valid standing sample. Received {loads}; flags {sample.ValidityFlags}.";
+        }
 
         public void SelectInput(CopInputMode mode)
         {
